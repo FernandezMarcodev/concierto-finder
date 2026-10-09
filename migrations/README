@@ -1,0 +1,7 @@
+Migraciones de la base (Alembic vía Flask-Migrate).
+
+Aplicar las pendientes:            flask --app app db upgrade
+Generar una nueva tras tocar un modelo: flask --app app db migrate -m "descripcion"
+Ver el SQL sin conectarse:         flask --app app db upgrade --sql
+
+Revisá siempre el archivo generado en versions/ antes de commitearlo.

@@ -1,0 +1,18 @@
+# Configuración de herramientas del backend. Las dependencias están en requirements.txt.
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+extend-exclude = ["web"]
+
+[tool.ruff.lint]
+# E/W: estilo, F: errores (imports sin uso, nombres indefinidos), I: orden de imports,
+# B: bugs comunes, UP: sintaxis moderna, SIM: simplificaciones.
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# Alembic genera los scripts con su propio formato de cabecera.
+"migrations/*" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

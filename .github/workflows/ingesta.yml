@@ -1,0 +1,86 @@
+# Ingesta automática de conciertos: cada 12 horas despierta la API en Render y
+# dispara el scraping de agendade.com.ar. Detalle en docs/OPERACION.md §5 y §6.
+#
+# Requiere el secret SCRAPER_TOKEN en el repo (Settings → Secrets and variables
+# → Actions), con el mismo valor que la variable SCRAPER_TOKEN de Render.
+
+name: Ingesta de conciertos
+
+on:
+  schedule:
+    # GitHub usa hora UTC. 12:10 y 0:10 UTC = 9:10 y 21:10 en Argentina (UTC-3).
+    # Las dos caen dentro de la franja del keep alive (9 a 2), así que no suman horas de Render.
+    # GitHub puede demorar algunos minutos en arrancar los workflows programados.
+    - cron: "10 0,12 * * *"
+  # Permite correrlo a mano desde la pestaña Actions ("Run workflow").
+  workflow_dispatch:
+
+# El workflow no necesita permisos sobre el repo: solo hace pedidos HTTP a la API.
+permissions: {}
+
+# Si una ingesta todavía está corriendo, la siguiente espera en vez de pisarla.
+concurrency:
+  group: ingesta
+  cancel-in-progress: false
+
+env:
+  API_URL: https://concierto-finder.onrender.com
+
+jobs:
+  ingestar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # Render duerme la API tras 15 min sin tráfico y tarda hasta un minuto en
+      # despertarla. Se reintenta hasta que responda antes de pedir la ingesta.
+      - name: Despertar la API
+        run: |
+          for intento in $(seq 1 10); do
+            if curl -fsS --max-time 60 "$API_URL/" > /dev/null; then
+              echo "La API está despierta."
+              exit 0
+            fi
+            echo "Intento $intento: la API todavía no responde. Espero 15 segundos..."
+            sleep 15
+          done
+          echo "::error::La API no respondió después de 10 intentos."
+          exit 1
+
+      # La ingesta tarda unos 15 minutos y responde con la lista de eventos leídos.
+      - name: Ejecutar la ingesta
+        env:
+          SCRAPER_TOKEN: ${{ secrets.SCRAPER_TOKEN }}
+        run: |
+          if [ -z "$SCRAPER_TOKEN" ]; then
+            echo "::error::Falta el secret SCRAPER_TOKEN en el repositorio."
+            exit 1
+          fi
+
+          salida_curl=0
+          codigo_http=$(curl -sS -o respuesta.json -w "%{http_code}" --max-time 1500 \
+            -X POST -H "Authorization: Bearer $SCRAPER_TOKEN" \
+            "$API_URL/ingestar_agendade") || salida_curl=$?
+
+          # 28 = se agotó el tiempo de espera de curl. El servidor sigue trabajando
+          # aunque se corte la conexión, así que no se marca como error.
+          if [ "$salida_curl" -eq 28 ]; then
+            echo "::warning::La ingesta tardó más de 25 minutos. Revisá el resultado en los logs de Render."
+            exit 0
+          fi
+          if [ "$salida_curl" -ne 0 ]; then
+            echo "::error::No se pudo conectar con la API (curl terminó con código $salida_curl)."
+            exit 1
+          fi
+          # 409 = ya había una ingesta corriendo (por ejemplo, la inicial tras un deploy).
+          if [ "$codigo_http" = "409" ]; then
+            echo "::warning::Ya había una ingesta en curso en el servidor; no se lanzó otra."
+            exit 0
+          fi
+          if [ "$codigo_http" != "200" ]; then
+            echo "::error::La API respondió $codigo_http: $(head -c 300 respuesta.json)"
+            exit 1
+          fi
+
+          echo "Ingesta terminada. Eventos leídos: $(jq length respuesta.json)."
+          echo "Los conciertos nuevos guardados figuran en los logs de Render (\"nuevos guardados\")."
