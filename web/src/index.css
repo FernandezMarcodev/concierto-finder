@@ -28,6 +28,9 @@
   /* Texto sobre acento (contraste >= 4.5:1 sobre #00aeef) */
   --color-on-accent: #0b1c26;
 
+  /* Barras de los gráficos de métricas. Validado contra --color-surface (luminosidad y contraste ≥ 3:1). */
+  --color-grafico: #0a9fdc;
+
   /* Error */
   --color-error: #f87171;
   --color-error-light: rgba(248, 113, 113, 0.1);
@@ -62,6 +65,8 @@
   --color-accent-light: rgba(2, 119, 189, 0.08);
   --color-accent-medium: rgba(2, 119, 189, 0.18);
   --color-on-accent: #ffffff;
+
+  --color-grafico: #0277bd;
 
   --color-error: #b91c1c;
   --color-error-light: rgba(185, 28, 28, 0.06);

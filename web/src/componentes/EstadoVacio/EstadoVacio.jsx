@@ -10,6 +10,14 @@ const configs = {
     titulo: "Error al cargar",
     descripcion: "Hubo un problema al cargar los conciertos. Intentá de nuevo.",
   },
+  "sin-metricas": {
+    titulo: "No hay conciertos en este período",
+    descripcion: "Probá con otro rango de fechas.",
+  },
+  "error-metricas": {
+    titulo: "Error al cargar las métricas",
+    descripcion: "Hubo un problema al pedir las métricas. Intentá de nuevo.",
+  },
 };
 
 const EstadoVacio = ({ tipo = "sin-resultados" }) => {
@@ -20,7 +28,7 @@ const EstadoVacio = ({ tipo = "sin-resultados" }) => {
     <div className={styles.estadoVacio}>
       <h3>{config.titulo}</h3>
       <p>{config.descripcion}</p>
-      {tipo === "error" && (
+      {tipo.startsWith("error") && (
         <button type="button" onClick={() => window.location.reload()}>
           Reintentar
         </button>
