@@ -4,12 +4,14 @@ import Mapa from "../componentes/Mapa/Mapa";
 import TarjetaGrupo from "../componentes/TarjetaGrupo/TarjetaGrupo";
 import Filtros from "../componentes/Filtros/Filtros";
 import EstadoVacio from "../componentes/EstadoVacio/EstadoVacio";
-import Cargando from "../componentes/Cargando/Cargando";
+import EsqueletoLista from "../componentes/Cargando/EsqueletoLista";
 import Encabezado from "../componentes/Encabezado/Encabezado";
+import Portada, { DatoPortada } from "../componentes/Portada/Portada";
 import { conciertoServicio } from "../servicios/conciertoServicio";
 import { useDebounce } from "../hooks/useDebounce";
 import { agruparPorPunto, claveGrupo } from "../utilidades/grupos";
 import { filtrarConciertos } from "../utilidades/filtros";
+import { etiquetaCercania } from "../utilidades/fechas";
 import { DEBOUNCE_FILTROS_MS, RADIO_INICIAL } from "../constantes";
 
 const Inicio = () => {
@@ -63,6 +65,13 @@ const Inicio = () => {
   // Un grupo por lugar (en el orden de fecha que trae la API). Lo comparten el mapa y la lista.
   const grupos = useMemo(() => agruparPorPunto(conciertos), [conciertos]);
 
+  // Datos de la portada: lugares con mapa y conciertos de hoy, según los filtros aplicados
+  const cantidadLugares = grupos.filter((grupo) => grupo.lat != null).length;
+  const cantidadHoy = useMemo(
+    () => conciertos.filter((concierto) => etiquetaCercania(concierto.fecha) === "Hoy").length,
+    [conciertos],
+  );
+
   const verEnMapa = (concierto) => {
     setSeleccion({ id: concierto.id });
     document.getElementById("col-mapa")?.scrollIntoView({
@@ -76,16 +85,26 @@ const Inicio = () => {
       <Encabezado />
 
       <div className="contenedor-principal">
-        <div className="titulo-wrapper">
-          <h1 className="titulo-principal">Próximos conciertos</h1>
-          {!cargando && conciertos.length > 0 && (
-            <span className="contador-conciertos">{conciertos.length}</span>
+        <Portada
+          titulo="Próximos conciertos"
+          descripcion="Explorá los próximos conciertos en Buenos Aires y alrededores: dónde, cuándo y cómo llegar."
+        >
+          {!error && (
+            <>
+              <DatoPortada
+                cargando={cargando}
+                valor={conciertos.length}
+                texto={conciertos.length === 1 ? "concierto" : "conciertos"}
+              />
+              <DatoPortada
+                cargando={cargando}
+                valor={cantidadLugares}
+                texto={cantidadLugares === 1 ? "lugar" : "lugares"}
+              />
+              {!cargando && cantidadHoy > 0 && <DatoPortada valor={cantidadHoy} texto="hoy" />}
+            </>
           )}
-        </div>
-
-        <img src="/logo.png" alt="Concierto Finder" className="logo-principal" />
-
-        <p className="descripcion-principal">Explorá los próximos conciertos en Buenos Aires y alrededores</p>
+        </Portada>
 
         <Filtros filtros={filtros} setFiltros={setFiltros} artistas={artistas} />
 
@@ -107,7 +126,7 @@ const Inicio = () => {
             {error ? (
               <EstadoVacio tipo="error" />
             ) : cargando ? (
-              <Cargando />
+              <EsqueletoLista />
             ) : conciertos.length === 0 ? (
               <EstadoVacio tipo="sin-resultados" />
             ) : (

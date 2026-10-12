@@ -18,14 +18,28 @@ import { enAmba } from "../../utilidades/geo";
 import { claveGrupo } from "../../utilidades/grupos";
 import { ARG_MAX_BOUNDS, CENTRO_BSAS, ZOOM_INICIAL, ZOOM_LUGAR } from "../../constantes";
 
-// Un único ícono compartido: crearlo en cada render obliga a Leaflet a reemplazar el DOM de cada marcador.
-const ICONO_LUGAR = L.divIcon({
-  html: '<div class="marker-custom"><span class="marker-inner"></span></div>',
-  className: "",
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -12],
-});
+// Ícono de un lugar: siempre muestra cuántos conciertos tiene (también el 1, para ser consistente).
+// Se guarda uno por cantidad: crearlo en cada render obligaría a Leaflet a reemplazar el DOM del marcador.
+const iconosPorCantidad = new Map();
+
+function iconoLugar(cantidad) {
+  if (!iconosPorCantidad.has(cantidad)) {
+    const texto = cantidad > 99 ? "99+" : String(cantidad);
+    // Un poco más grande cuando el número tiene dos cifras o más
+    const tamano = texto.length > 1 ? 32 : 28;
+    iconosPorCantidad.set(
+      cantidad,
+      L.divIcon({
+        html: `<div class="marker-custom" style="width:${tamano}px;height:${tamano}px"><span class="marker-cantidad">${texto}</span></div>`,
+        className: "",
+        iconSize: [tamano, tamano],
+        iconAnchor: [tamano / 2, tamano / 2],
+        popupAnchor: [0, -tamano / 2],
+      }),
+    );
+  }
+  return iconosPorCantidad.get(cantidad);
+}
 
 const ESTILO_USUARIO = { color: "#1a73e8", fillColor: "#1a73e8", fillOpacity: 1, weight: 2 };
 const ESTILO_RADIO = { color: "#1a73e8", fillColor: "#1a73e8", fillOpacity: 0.05, weight: 2 };
@@ -183,7 +197,7 @@ function Mapa({ grupos = [], ubicacionUsuario, radioKm, seleccion }) {
             <Marker
               key={clave}
               position={[grupo.lat, grupo.lng]}
-              icon={ICONO_LUGAR}
+              icon={iconoLugar(grupo.conciertos.length)}
               ref={(marcador) => {
                 if (marcador) marcadores.current[clave] = marcador;
                 else delete marcadores.current[clave];

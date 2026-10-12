@@ -15,6 +15,12 @@
   height: 100%;
 }
 
+/* Tema claro: el mapa de OpenStreetMap en gris suave. Tiene muchos colores (rutas rosas, parques
+   verdes) que compiten con los marcadores y el mapa de calor; en gris, lo que se destaca son los datos. */
+:global(:root[data-tema="claro"]) .contenedorMapa :global(.leaflet-tile) {
+  filter: grayscale(0.85) brightness(1.04) contrast(0.92);
+}
+
 /* Tiles oscuros solo en el tema oscuro. El filtro afecta a los tiles, no a los marcadores. */
 :global(:root[data-tema="oscuro"]) .contenedorMapa :global(.leaflet-tile) {
   /* Invierte el mapa claro de OpenStreetMap y le da un tono azul oscuro. A propósito distinto del
@@ -201,11 +207,14 @@
     box-shadow var(--transition-fast);
 }
 
-:global(.marker-custom .marker-inner) {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: var(--color-on-accent);
+/* El marcador muestra la cantidad de conciertos del lugar */
+:global(.marker-custom .marker-cantidad) {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-on-accent);
+  font-variant-numeric: tabular-nums;
 }
 
 :global(.marker-custom:hover) {

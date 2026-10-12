@@ -1,0 +1,95 @@
+/* Tarjeta de bienvenida con un degradé muy suave del color de la marca */
+.portada {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-bottom: var(--space-5);
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--color-accent-medium), transparent 60%), var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.logo {
+  flex-shrink: 0;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  filter: var(--logo-filtro);
+}
+
+.textos {
+  min-width: 0;
+}
+
+.titulo {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+}
+
+.descripcion {
+  margin: var(--space-1) 0 0;
+  max-width: 560px;
+  color: var(--color-text-secondary);
+}
+
+.datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.dato {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.dato strong {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.datoCargando {
+  display: inline-block;
+  width: 24px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-border);
+}
+
+@media (max-width: 640px) {
+  .portada {
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .titulo {
+    font-size: var(--text-2xl);
+  }
+
+  .descripcion {
+    font-size: var(--text-sm);
+  }
+
+  .datos {
+    margin-top: var(--space-3);
+  }
+}

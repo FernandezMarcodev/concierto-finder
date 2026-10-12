@@ -1,5 +1,8 @@
 /* ====== GRUPO ====== */
 .grupo {
+  /* Contiene los textos ocultos (.soloLectores, con position: absolute). Sin esto se escapan de la
+     lista con scroll de la columna y estiran la página: quedaban ~30.000 px en blanco abajo. */
+  position: relative;
   background-color: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -71,22 +74,90 @@
   background-color: var(--color-accent-light);
 }
 
+/* Fecha a la izquierda, datos a la derecha */
 .filaPrincipal {
+  --ancho-fecha: 56px;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .filaInfo {
   min-width: 0;
+  flex: 1;
+}
+
+/* ====== BLOQUE DE FECHA (tipo entrada) ====== */
+.bloqueFecha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--ancho-fecha);
+  padding: 6px 0;
+  border-radius: var(--radius-md);
+  background-color: var(--color-accent-light);
+  border: 1px solid var(--color-accent-medium);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.fechaDiaSemana,
+.fechaMes {
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+}
+
+.fechaDia {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bloqueFechaSinDato {
+  min-height: 64px;
+  background-color: var(--color-bg-subtle);
+  border-color: var(--color-border);
+}
+
+.fechaConfirmar {
+  font-size: 0.625rem; /* 10px */
+  font-weight: 700;
+  text-align: center;
+  color: var(--color-text-tertiary);
+}
+
+/* "Hoy" / "Mañana" */
+.etiquetaCercania {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Visible solo para lectores de pantalla */
+.soloLectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .tituloFila {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .artistaFila {
@@ -97,6 +168,7 @@
 }
 
 .nombreFila {
+  margin-top: 2px;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
@@ -106,7 +178,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 .metaItem {
@@ -129,8 +201,6 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border-subtle);
 }
 
 .botonMapa,
@@ -193,6 +263,10 @@
 
   .fila {
     padding: var(--space-3) var(--space-4);
+  }
+
+  .filaPrincipal {
+    gap: var(--space-3);
   }
 
   /* Las tres acciones ocupan el ancho en partes iguales */
