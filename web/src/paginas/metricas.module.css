@@ -1,0 +1,57 @@
+.titulo {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+}
+
+.descripcion {
+  margin: var(--space-2) 0 var(--space-5);
+  color: var(--color-text-secondary);
+}
+
+/* Fila de indicadores: se acomoda sola según el ancho */
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+/* Dos columnas de gráficos en escritorio, una en pantallas chicas */
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+/* Mientras llegan los datos de un filtro nuevo, los anteriores se atenúan */
+.actualizando {
+  opacity: 0.6;
+  transition: opacity var(--transition-base);
+}
+
+.nota {
+  margin: var(--space-5) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+@media (max-width: 900px) {
+  .grilla {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .titulo {
+    font-size: var(--text-2xl);
+  }
+
+  /* 3 + 2 en el teléfono: con 2 columnas el quinto indicador quedaba solo en una fila */
+  .tarjetas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+}

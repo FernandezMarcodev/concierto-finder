@@ -21,6 +21,45 @@
   font-size: var(--text-xl);
   font-weight: 700;
   color: var(--color-text);
+  white-space: nowrap;
+}
+
+.marcaNombre:hover {
+  color: var(--color-text);
+}
+
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ====== NAVEGACIÓN ====== */
+.navegacion {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.enlace {
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.enlace:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg-subtle);
+}
+
+.enlaceActivo,
+.enlaceActivo:hover {
+  color: var(--color-accent);
+  background-color: var(--color-accent-light);
 }
 
 /* Botón de modo claro / oscuro */
@@ -55,6 +94,21 @@
 
   .marcaNombre {
     font-size: var(--text-lg);
+  }
+}
+
+/* Teléfonos chicos: entran la marca, los dos enlaces y el botón de tema */
+@media (max-width: 420px) {
+  .marcaNombre {
+    font-size: var(--text-base);
+  }
+
+  .acciones {
+    gap: var(--space-2);
+  }
+
+  .enlace {
+    padding: 6px var(--space-2);
   }
 }
 
