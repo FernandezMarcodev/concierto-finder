@@ -98,6 +98,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RNF-11 | Usabilidad | Interfaz en español, responsiva, con estados de carga, vacío y error. Fechas en formato `es-AR` y hora local. |
 | RNF-12 | Portabilidad | El stack completo levanta con `docker compose up --build`. |
 | RNF-13 | Convención | Código, identificadores, comentarios y textos de la interfaz en español. |
+| RNF-14 | Calidad | El backend tiene tests automatizados (pytest) que corren contra PostgreSQL + PostGIS real y crean el esquema con las migraciones. Ver [OPERACION.md](OPERACION.md) §9. |
 
 ## 6. Restricciones y supuestos
 
@@ -116,5 +117,5 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | `ubicaciones.nombre` admite 50 caracteres; un lugar con nombre más largo hace fallar el alta y se pierde ese evento. | Pérdida de algunos eventos. |
 | `capacidad_total` siempre se guarda en 0 (la fuente no la informa). | Campo sin uso real. |
 | La ingesta corre dentro del pedido HTTP (varios minutos). | Si el cliente o un proxy corta por timeout, la ingesta igual continúa en el servidor, pero no se ve el resultado. |
-| No hay tests automatizados. | Las regresiones se detectan a mano. |
+| El frontend no tiene tests automatizados, y el scraper solo tiene tests de sus funciones de parseo (no del recorrido del HTML de agendade). Los tests todavía no corren solos en cada PR (falta `chore/ci-calidad`). | Las regresiones del frontend y los cambios de HTML de la fuente se detectan a mano. |
 | Un concierto cancelado o reprogramado queda en el historial: la ingesta no registra cuándo vio un concierto por última vez, así que no se distingue de uno que se realizó. Una reprogramación queda como dos conciertos (fecha vieja y fecha nueva). | Las métricas cuentan de más esos casos. Se podría resolver más adelante con una columna `visto_en` que la ingesta actualice cada vez que encuentra el concierto. |

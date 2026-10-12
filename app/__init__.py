@@ -22,6 +22,10 @@ def create_app(config_object=Config):
 
     registrar_blueprints(app)
 
+    from app.cli import registrar_comandos
+
+    registrar_comandos(app)
+
     @app.errorhandler(TimeoutError)
     def responder_base_ocupada(error):
         db.session.close()
