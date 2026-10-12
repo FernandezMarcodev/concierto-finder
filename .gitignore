@@ -24,7 +24,8 @@ Thumbs.db
 *.log
 
 # Instrucciones para agentes de IA
-/CLAUDE.md
 /AGENTS.md
-/claude.md
 /agents.md
+
+# Notas personales (solo en local)
+/docs/GUIA-ENTREVISTA.md
