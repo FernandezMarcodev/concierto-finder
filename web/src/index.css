@@ -198,9 +198,11 @@ img {
 }
 
 /* ====== GRID ====== */
+/* minmax(0, ...) y no "1fr" solo: "1fr" nunca es más angosto que su contenido, y una fila de
+   botones larga ensanchaba la columna (y el mapa) más allá de la pantalla del teléfono. */
 .contenedor-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: var(--space-5);
   align-items: start;
 }
@@ -237,7 +239,7 @@ img {
 /* ====== RESPONSIVE ====== */
 @media (max-width: 960px) {
   .contenedor-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .col-lista {

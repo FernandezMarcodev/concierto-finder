@@ -87,8 +87,15 @@
     width: 100%;
   }
 
+  /* min-width: 0 deja que los campos de fecha se achiquen (el navegador les da un ancho mínimo propio) */
   .campo {
     flex: 1;
+    min-width: 0;
+  }
+
+  .campo input {
+    width: 100%;
+    min-width: 0;
   }
 }
 
