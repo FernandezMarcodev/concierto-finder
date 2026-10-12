@@ -112,6 +112,32 @@
   }
 }
 
+/* Teléfonos muy angostos (360 px o menos): se achican la marca, el espacio y los enlaces.
+   El botón de tema conserva los 44 px táctiles. */
+@media (max-width: 370px) {
+  .encabezado {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .marcaNombre {
+    font-size: var(--text-sm);
+  }
+
+  .acciones {
+    gap: var(--space-1);
+  }
+
+  .navegacion {
+    gap: 0;
+  }
+
+  .enlace {
+    padding: 6px;
+    font-size: var(--text-xs);
+  }
+}
+
 @media (pointer: coarse) {
   .botonTema {
     width: var(--tactil-min);

@@ -41,7 +41,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RF-02 | La lista agrupa los conciertos **por lugar** (coordenada exacta): una tarjeta por lugar con la cantidad de conciertos y cada concierto en una fila. |
 | RF-03 | Dentro de cada lugar, los conciertos se ordenan por fecha ascendente. |
 | RF-04 | Cada fila muestra la fecha en un bloque tipo entrada (día de la semana, número y mes; "A confirmar" si no hay fecha), el artista, el nombre del evento (si difiere del artista) y la hora (`HH:MM h`; "Horario a confirmar" si no se conoce). Los conciertos de hoy y de mañana llevan la etiqueta **Hoy** o **Mañana**. |
-| RF-05 | Cada fila ofrece, en este orden, **Entradas** (abre la URL de compra en otra pestaña; solo si existe), **Ver en mapa** y **Cómo llegar** (indicaciones de Google Maps; ambas solo si el lugar tiene coordenadas). |
+| RF-05 | Cada fila ofrece, en este orden, **Entradas** (abre la URL de compra en otra pestaña; solo si existe), **Ver en mapa** y **Cómo llegar** (indicaciones de Google Maps; ambas solo si el lugar tiene coordenadas). En el teléfono, **Entradas** ocupa todo el ancho y las otras dos acciones van debajo, mitad y mitad. |
 | RF-06 | **Ver en mapa** centra el mapa en el lugar (zoom 15), abre el popup del marcador, resalta el concierto y desplaza la página hasta el mapa. |
 | RF-07 | El mapa muestra **un marcador por lugar**, con la cantidad de conciertos del lugar (también el 1). En el tema claro el mapa base se muestra en gris suave, para que se destaquen los datos. El popup lista el o los conciertos del lugar con fecha, hora y enlace a entradas. |
 | RF-08 | Una portada con el logo muestra, según los filtros aplicados, la cantidad de conciertos, de lugares y de conciertos de hoy (este último, solo si hay). |
@@ -115,7 +115,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RNF-08 | Seguridad | Las credenciales solo se leen del entorno (`DATABASE_URL`, `SCRAPER_TOKEN`), nunca del código. El token se compara en tiempo constante. |
 | RNF-09 | Seguridad | La API pública es de solo lectura; la única escritura (ingesta) requiere token. CORS abierto a cualquier origen. |
 | RNF-10 | Mantenibilidad | El esquema de la base se versiona con migraciones de Alembic y se aplica al arrancar el contenedor. |
-| RNF-11 | Usabilidad | Interfaz en español, responsiva, con estados de carga, vacío y error. Fechas en formato `es-AR` y hora local. |
+| RNF-11 | Usabilidad | Interfaz en español, responsiva, con estados de carga, vacío y error. Fechas en formato `es-AR` y hora local. Sin scroll horizontal desde 320 px de ancho. |
 | RNF-12 | Portabilidad | El stack completo levanta con `docker compose up --build`. |
 | RNF-13 | Convención | Código, identificadores, comentarios y textos de la interfaz en español. |
 | RNF-14 | Calidad | El backend tiene tests automatizados (pytest) que corren contra PostgreSQL + PostGIS real y crean el esquema con las migraciones. Ver [OPERACION.md](OPERACION.md) §9. |

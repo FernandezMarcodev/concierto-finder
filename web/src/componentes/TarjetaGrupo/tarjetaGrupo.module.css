@@ -269,11 +269,20 @@
     gap: var(--space-3);
   }
 
-  /* Las tres acciones ocupan el ancho en partes iguales */
+  /* En el teléfono no entran tres botones en una fila: "Entradas" (la acción principal) ocupa
+     todo el ancho y abajo van "Ver en mapa" y "Cómo llegar", mitad y mitad. */
+  .filaAcciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .botonEntradas {
+    grid-column: 1 / -1;
+  }
+
   .botonMapa,
   .enlaceSecundario,
   .botonEntradas {
-    flex: 1 1 0;
     justify-content: center;
     padding: 6px var(--space-2);
     white-space: nowrap;
