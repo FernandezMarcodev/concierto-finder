@@ -66,7 +66,8 @@ El esquema se versiona con Alembic (Flask-Migrate) en `migrations/`.
 | Revertir la última | `flask --app app db downgrade` |
 
 **Bases creadas antes de las migraciones** (con `db.create_all()`): no hace falta hacer nada.
-`0001_esquema_inicial` detecta las tablas existentes y no las toca, y `0002` amplía `url_evento`.
+`0001_esquema_inicial` detecta las tablas existentes y no las toca, `0002` amplía `url_evento` y
+`0003` agrega índices para el historial.
 Basta con correr `upgrade`.
 
 ## 4. Despliegue en producción
@@ -81,7 +82,7 @@ Basta con correr `upgrade`.
 
 1. Definir `SCRAPER_TOKEN` en Render **antes** de desplegar: sin él, la ingesta queda deshabilitada.
 2. Crear el secret `SCRAPER_TOKEN` en GitHub con el mismo valor que en Render (§5), para el workflow de ingesta.
-3. Desplegar la API y verificar en los logs `Running upgrade ... -> 0002_url_evento_text`.
+3. Desplegar la API y verificar en los logs `Running upgrade ... -> 0003_historial_conciertos`.
 4. Verificar `GET /` (200) y `GET /conciertos`.
 5. Desplegar el frontend.
 
@@ -165,7 +166,7 @@ Si un servicio de cron solo admite una URL: `https://concierto-finder.onrender.c
 | Tarea | Frecuencia | Qué hace |
 |---|---|---|
 | `mantener_despierta` | 12 min, solo dentro de la franja | `GET KEEP_ALIVE_URL` para evitar que Render duerma el servicio (ver §5). |
-| `programar_limpieza_diaria` | al arrancar y cada 24 h | Borra conciertos pasados (según la fecha argentina) y duplicados. |
+| `programar_limpieza_diaria` | al arrancar y cada 24 h | Borra los conciertos duplicados. Los pasados **se conservan** como historial; la API los oculta de los listados. |
 | `ingesta_inicial` | al arrancar | Si la base **no tiene ningún concierto** (primer deploy o base nueva), ejecuta la ingesta en segundo plano. Con datos ya cargados no hace nada. |
 
 Corren como hilos dentro del proceso de `app.main`. Como Render reinicia el proceso cada vez que

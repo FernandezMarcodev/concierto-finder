@@ -53,7 +53,7 @@ flowchart LR
     estaticos -- "HTML/JS/CSS" --> spa
     spa -- "GET /conciertos (JSON)" --> flask
     flask -- "SQLAlchemy / psycopg2" --> db
-    hilos -- "DELETE diarios" --> db
+    hilos -- "DELETE de duplicados (diario)" --> db
     hilos -. "ping cada 12 min (9 a 2 h)" .-> flask
 ```
 
@@ -91,12 +91,13 @@ flowchart TD
 | `main.py` | Entrypoint de producción: configura `logging`, crea la app y **arranca los hilos de fondo**. |
 | `config.py` | Lee `DATABASE_URL` (obligatoria, falla al importar si falta), `SCRAPER_TOKEN` y las opciones del pool. |
 | `routes/` | HTTP. `autorizacion.py` define `verificar_token_ingesta()`, que la ruta de ingesta llama antes de empezar. Las rutas no contienen consultas. |
-| `repositories/` | **Todas** las consultas: listados con `joinedload` y orden por fecha, búsqueda espacial `ST_DWithin`, existencia y borrados masivos. |
+| `repositories/` | **Todas** las consultas: listados de vigentes con `joinedload` y orden por fecha, búsqueda espacial `ST_DWithin`, existencia y borrado masivo de duplicados. Las funciones de listado reciben `hoy` como parámetro. |
 | `schemas/` | Serialización manual a dict/JSON (`[lng, lat]`, fechas ISO o `null`). |
 | `services/scraper_service.py` | Ingesta: descarga, parseo, resolución de lugar, deduplicación y alta. |
 | `services/geocoding_service.py` | Nominatim y la regla de región AMBA (fuente de verdad de los límites). |
 | `services/tareas.py` | Hilos `mantener_despierta` (keep alive dentro de una franja horaria, o mientras corre una ingesta), `programar_limpieza_diaria` e `ingesta_inicial` (solo si la base está vacía). |
 | `services/http.py` | `requests.Session` compartida y timeout por defecto. |
+| `services/fechas.py` | `hoy_argentina()` / `ahora_argentina()`: la fecha y la hora en `America/Argentina/Buenos_Aires` (el servidor corre en UTC). |
 
 ### 2.2 Modelo de datos
 
@@ -115,8 +116,8 @@ erDiagram
         varchar50 nombre "NOT NULL"
         varchar50 artista "NOT NULL"
         text url_evento
-        int ubicacion FK "ON DELETE CASCADE"
-        date fecha
+        int ubicacion FK "ON DELETE CASCADE, índice"
+        date fecha "índice"
         time hora
     }
 ```
@@ -124,7 +125,10 @@ erDiagram
 - Coordenadas en **WGS84 (SRID 4326)**, orden `[lng, lat]` en WKT y en el JSON.
 - Las búsquedas por distancia castean a `Geography` para medir en metros.
 - El esquema se versiona en `migrations/` (Alembic). `0001_esquema_inicial` es idempotente
-  (no recrea tablas existentes); `0002_url_evento_text` amplía `url_evento` a `TEXT`.
+  (no recrea tablas existentes); `0002_url_evento_text` amplía `url_evento` a `TEXT`;
+  `0003_historial_conciertos` agrega índices sobre `conciertos.fecha` y `conciertos.ubicacion`.
+- **Historial:** los conciertos pasados se conservan. "Vigente" no se guarda: se calcula en cada
+  consulta con `fecha >= hoy OR fecha IS NULL` (ver D-8).
 
 ### 2.3 Concurrencia y recursos
 
@@ -185,7 +189,7 @@ sequenceDiagram
     N->>W: GET /
     W-->>N: index.html + assets
     N->>A: GET /conciertos
-    A->>D: SELECT conciertos LEFT JOIN ubicaciones ORDER BY fecha, hora
+    A->>D: SELECT conciertos LEFT JOIN ubicaciones<br/>WHERE fecha >= hoy OR fecha IS NULL ORDER BY fecha, hora
     D-->>A: filas
     A-->>N: 200 {conciertos:[...]} (Cache-Control 300 s)
     Note over N: filtra, agrupa y dibuja localmente.<br/>Los filtros no vuelven a llamar a la API.
@@ -224,8 +228,9 @@ bajar una página de la agenda corta la corrida.
 
 ### 4.3 Limpieza diaria
 
-Hilo `programar_limpieza_diaria`: al arrancar y luego cada 24 h ejecuta, en una transacción,
-`DELETE ... WHERE fecha < hoy` y un `DELETE ... WHERE EXISTS (otro con menor id y misma identidad)`.
+Hilo `programar_limpieza_diaria`: al arrancar y luego cada 24 h ejecuta, en una transacción, un
+`DELETE` de los duplicados (cuando hay otro con menor id y la misma identidad). Los conciertos
+pasados **no** se borran: son el historial.
 
 ## 5. Decisiones de diseño
 
@@ -238,11 +243,11 @@ Hilo `programar_limpieza_diaria`: al arrancar y luego cada 24 h ejecuta, en una 
 | D-5 | Serialización manual | Dos entidades; no justifica marshmallow. | Hay que mantener los serializadores a mano. |
 | D-6 | Ingesta protegida con token compartido | Simple y compatible con crons que solo configuran una URL (`?token=`). | El token en la query puede quedar en los logs de proxies; se prefiere el header. |
 | D-7 | Migraciones con Alembic y base idempotente | Versionar el esquema sin romper las bases creadas con `create_all()`. | Los cambios de modelo requieren `flask db migrate` y revisar el script. |
+| D-8 | Historial con **vigencia derivada de la fecha** (en lugar de una tabla de archivados o una columna `estado`) | La regla de vigencia (RN-02) ya depende solo de la fecha: guardarla aparte duplicaría el dato y obligaría a un job que la mantenga al día. Una tabla de archivados duplicaría el esquema y haría que cada métrica necesite un `UNION`. | Todas las consultas públicas deben filtrar por fecha (está centralizado en `_consulta_vigentes`). La tabla crece sin límite: por eso los índices de la `0003`. |
 
 ## 6. Deuda técnica y evolución sugerida
 
 - Tests automatizados: parseo del scraper con HTML de ejemplo, repositorios contra PostGIS y utilidades del frontend.
 - Ampliar `ubicaciones.nombre` (50 caracteres) y matchear lugares por nombre exacto o normalizado en lugar de `ILIKE %x%`.
 - Correr la ingesta fuera del pedido HTTP (cola o job programado), para no ocupar un hilo de waitress durante minutos.
-- Índice sobre `conciertos.fecha` si el volumen crece.
 - Unificar la ubicación de los límites de AMBA (por ejemplo, exponerlos por la API) para no mantenerlos duplicados.

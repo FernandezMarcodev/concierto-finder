@@ -3,11 +3,13 @@ from flask import Blueprint, request
 from app.repositories.concierto_repository import obtener_conciertos, obtener_conciertos_cerca
 from app.routes.autorizacion import verificar_token_ingesta
 from app.schemas.concierto_schema import serializar_concierto
+from app.services.fechas import hoy_argentina
 from app.services.scraper_service import ingestar_agendade
 
 bp = Blueprint("conciertos", __name__)
 
 # Los datos cambian solo con el scraping y la limpieza diaria: se puede cachear un rato.
+# Los listados muestran solo conciertos vigentes; los pasados quedan en la base como historial.
 CACHE_CONCIERTOS = "public, max-age=300"
 
 
@@ -18,7 +20,7 @@ def _respuesta_conciertos(conciertos):
 
 @bp.route("/conciertos")
 def listar_conciertos():
-    return _respuesta_conciertos(obtener_conciertos())
+    return _respuesta_conciertos(obtener_conciertos(hoy_argentina()))
 
 
 # ejemplo desde Parque Rivadavia: /conciertos_cerca?lat=-34.6183&lng=-58.4339&km=10
@@ -32,7 +34,7 @@ def listar_conciertos_cerca():
         return {"error": "Parámetros inválidos"}, 400
 
     # Si el pool se agota, el handler de TimeoutError en create_app responde 503.
-    return _respuesta_conciertos(obtener_conciertos_cerca(lat, lng, km * 1000))
+    return _respuesta_conciertos(obtener_conciertos_cerca(lat, lng, km * 1000, hoy_argentina()))
 
 
 # Dispara un scraping de varios minutos que escribe en la base: requiere SCRAPER_TOKEN.

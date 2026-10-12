@@ -57,7 +57,8 @@ Responde `200` con `{"estado": "ok"}`.
 
 ### `GET /conciertos`
 
-Todos los conciertos guardados (los pasados se borran a diario), ordenados por fecha y hora
+Los conciertos **vigentes**: fecha de hoy (hora argentina) en adelante, o sin fecha. Los pasados
+se conservan en la base como historial, pero no se devuelven. Ordenados por fecha y hora
 ascendentes, con los nulos al final.
 
 ```
@@ -69,7 +70,7 @@ Cache-Control: public, max-age=300
 
 ### `GET /conciertos_cerca?lat=&lng=&km=`
 
-Conciertos cuyo lugar está a `km` kilómetros o menos del punto dado (distancia geodésica, `ST_DWithin` sobre `Geography`).
+Conciertos **vigentes** cuyo lugar está a `km` kilómetros o menos del punto dado (distancia geodésica, `ST_DWithin` sobre `Geography`).
 
 | Parámetro | Tipo | Requerido |
 |---|---|---|
