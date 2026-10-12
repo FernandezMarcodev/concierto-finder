@@ -68,3 +68,12 @@ SQL_ELIMINAR_DUPLICADOS = text("""
 def eliminar_conciertos_duplicados():
     """Borra los conciertos repetidos (mismo nombre, artista, fecha y lugar). Devuelve cuántos borró."""
     return db.session.execute(SQL_ELIMINAR_DUPLICADOS).rowcount
+
+
+def contar_conciertos():
+    return db.session.query(func.count(Concierto.id)).scalar()
+
+
+def vaciar_conciertos_y_ubicaciones():
+    """Borra TODOS los conciertos y lugares y reinicia los ids. Solo para desarrollo (datos ficticios)."""
+    db.session.execute(text("TRUNCATE conciertos, ubicaciones RESTART IDENTITY CASCADE"))

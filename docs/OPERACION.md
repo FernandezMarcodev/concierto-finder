@@ -38,6 +38,23 @@ Para cargar datos, con `SCRAPER_TOKEN` definido en `.env`:
 curl -H "Authorization: Bearer <token>" http://localhost:8000/ingestar_agendade
 ```
 
+### Datos ficticios
+
+Para probar sin scrapear (y para tener historial con el que ver las métricas):
+
+```bash
+docker compose run --rm app flask --app app sembrar --vaciar     # 400 conciertos, 12 meses hacia atrás y 3 hacia adelante
+docker compose run --rm app flask --app app sembrar --help       # opciones: --cantidad, --meses, --semilla
+```
+
+- Artistas inventados en lugares reales de AMBA (coordenadas aproximadas). Las URLs de entradas
+  apuntan a `example.com`, así un dato ficticio se reconoce a simple vista.
+- Con la misma `--semilla` se generan siempre los mismos datos.
+- Si la base ya tiene conciertos, el comando se niega, salvo que se agregue `--vaciar`
+  (**borra todos los conciertos y lugares**): así no se mezclan datos reales con ficticios.
+- En Render (variable `RENDER` definida) se niega siempre.
+- Con la base no vacía, la ingesta inicial no corre al arrancar (§7).
+
 ### Sin Docker (PowerShell)
 
 ```powershell
@@ -183,3 +200,40 @@ despierta la instancia, la limpieza corre al menos una vez por día.
 | La ingesta lee eventos pero no guarda ninguno | Cambió el HTML de agendade o Nominatim no responde | Revisar los logs (`app.services.scraper_service`) con `LOG_LEVEL=DEBUG`. |
 | El frontend local muestra datos de producción | Falta `VITE_API_URL` | Crear `web/.env.local`. |
 | `flask db upgrade` falla con `permission denied to create extension` | El usuario no puede crear PostGIS | Crear la extensión como superusuario una vez. |
+
+## 9. Tests
+
+Los tests del backend (`tests/`, con pytest) corren contra una base **PostgreSQL + PostGIS real**,
+no contra SQLite ni con mocks: las consultas usan funciones de PostGIS que solo existen ahí.
+
+### Con Docker (recomendado, no necesita `.env`)
+
+```bash
+docker compose -f docker-compose.test.yml run --rm tests     # levanta la base de prueba y corre pytest
+docker compose -f docker-compose.test.yml down               # apaga la base de prueba
+```
+
+`docker-compose.test.yml` es independiente del `docker-compose.yml`: usa su propia base
+(`concierto_test`, en memoria con `tmpfs`, publicada en el host en `:55433`) y no toca el volumen
+`pgdata`. El código se monta como volumen, así que editar un test no requiere reconstruir.
+Para pasarle opciones a pytest: `... run --rm tests pytest -k vigentes -v`.
+
+### Sin Docker para Python (PowerShell)
+
+```powershell
+docker compose -f docker-compose.test.yml up -d db_test
+pip install -r requirements-dev.txt
+$env:TEST_DATABASE_URL = "postgresql://test:test@localhost:55433/concierto_test"
+pytest
+```
+
+### Reglas
+
+- **El nombre de la base tiene que terminar en `_test`.** Si no, `tests/conftest.py` corta antes de
+  empezar: los tests vacían las tablas y no deben correr nunca contra la base de desarrollo ni la
+  de producción.
+- El esquema se crea con las **migraciones** (igual que en producción). Hay un test que falla si se
+  cambia un modelo sin crear su migración.
+- Cada test arranca con las tablas vacías (`TRUNCATE` al terminar cada uno).
+- "Hoy" se fija en el 15/10/2026 (fixture `hoy`), así el resultado no depende del día.
+- Antes de commitear: `ruff check app migrations tests && ruff format app migrations tests` y `pytest`.

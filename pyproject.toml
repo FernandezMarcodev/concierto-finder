@@ -16,3 +16,10 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+# Los tests usan una base PostGIS real (ver tests/conftest.py y docs/OPERACION.md §9).
+testpaths = ["tests"]
+# La raíz del repo en el path, para poder importar el paquete `app` desde los tests.
+pythonpath = ["."]
+addopts = "-ra"

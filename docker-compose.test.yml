@@ -1,0 +1,39 @@
+# Entorno de tests, separado del de desarrollo: base PostGIS descartable + contenedor con pytest.
+# No necesita .env ni toca el volumen pgdata del docker-compose.yml.
+#
+#   docker compose -f docker-compose.test.yml run --rm tests
+#   docker compose -f docker-compose.test.yml down     # apaga la base de prueba
+name: concierto-finder-test
+
+services:
+  db_test:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      # El nombre termina en _test: conftest.py se niega a correr contra cualquier otra base.
+      POSTGRES_DB: concierto_test
+    # Los datos viven en memoria (tmpfs): la base se crea vacía cada vez que arranca el contenedor.
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      # Para correr pytest desde el host: TEST_DATABASE_URL=postgresql://test:test@localhost:55433/concierto_test
+      - "55433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d concierto_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      TEST_DATABASE_URL: postgresql://test:test@db_test:5432/concierto_test
+    # El código se monta (no se copia): editar un test no requiere reconstruir la imagen.
+    volumes:
+      - .:/srv
+    depends_on:
+      db_test:
+        condition: service_healthy

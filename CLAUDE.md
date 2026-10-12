@@ -28,11 +28,20 @@ Frontend (`web/`): `npm run dev`, `npm run build`, `npm run lint` (ESLint 9 flat
 
 Formatting and linting (run before committing):
 ```bash
-ruff check app migrations && ruff format app migrations   # backend (pip install -r requirements-dev.txt); config in pyproject.toml
+ruff check app migrations tests && ruff format app migrations tests   # backend (pip install -r requirements-dev.txt); config in pyproject.toml
 cd web && npm run lint && npm run format                   # frontend: ESLint + Prettier
 ```
 
-There is no test suite. Python dependencies are pinned in `requirements.txt`; line endings are LF (`.gitattributes`).
+Fake data for local dev: `docker compose run --rm app flask --app app sembrar --vaciar` (`app/cli.py` → `services/datos_ficticios.py`; refuses on Render or when the table has data unless `--vaciar`, which TRUNCATEs everything; ticket URLs use example.com).
+
+Tests (backend only, pytest against a real PostGIS, see `docs/OPERACION.md` §9):
+```bash
+docker compose -f docker-compose.test.yml run --rm tests            # all tests, no .env needed
+docker compose -f docker-compose.test.yml run --rm tests pytest -k vigentes -v
+```
+`tests/conftest.py` refuses to run unless `TEST_DATABASE_URL` points to a database whose name ends in `_test` (tests TRUNCATE the tables). The schema comes from the Alembic migrations, `test_migraciones.py` fails if a model changes without a migration, and the `hoy` fixture fixes "today" to 2026-10-15 (repositories take `hoy` as a parameter; routes are monkeypatched).
+
+Python dependencies are pinned in `requirements.txt`; line endings are LF (`.gitattributes`).
 
 Project docs (Spanish, reverse-engineered from the code) live in `docs/`: `REQUISITOS.md`, `ARQUITECTURA.md`, `API.md`, `OPERACION.md`. Update them when behavior changes. `docs/PLAN.md` is the feature roadmap and Git workflow: one branch per feature (`feat/`, `fix/`, `chore/`, `docs/`, `refactor/` + Spanish kebab-case), PR to `main`, squash merge; never commit features directly to `main`. Only one open branch with migrations at a time.
 

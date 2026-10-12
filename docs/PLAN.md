@@ -47,7 +47,8 @@ git commit -m "feat(ui): chips de fecha en el panel de filtros"
 # 3. Antes del PR: traer lo nuevo de main y verificar
 git fetch origin
 git rebase origin/main          # o: git merge origin/main
-ruff check app migrations && ruff format app migrations
+ruff check app migrations tests && ruff format app migrations tests
+docker compose -f docker-compose.test.yml run --rm tests
 cd web && npm run lint && npm run format && npm run build && cd ..
 
 # 4. Subir la rama y abrir el PR
