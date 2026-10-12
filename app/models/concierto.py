@@ -11,8 +11,9 @@ class Concierto(db.Model):
     nombre = db.Column(db.String(LARGO_TEXTO), nullable=False)
     artista = db.Column(db.String(LARGO_TEXTO), nullable=False)
     url_evento = db.Column(db.Text)  # sin límite: las URLs de entradas suelen superar los 100 caracteres
-    ubicacion = db.Column(db.Integer, db.ForeignKey("ubicaciones.id", ondelete="CASCADE"))
-    fecha = db.Column(db.Date)
+    # index=True: los listados filtran por fecha y las métricas agrupan por lugar (migración 0003).
+    ubicacion = db.Column(db.Integer, db.ForeignKey("ubicaciones.id", ondelete="CASCADE"), index=True)
+    fecha = db.Column(db.Date, index=True)
     hora = db.Column(db.Time)
 
     ubicacion_ref = db.relationship("Ubicacion", back_populates="conciertos")

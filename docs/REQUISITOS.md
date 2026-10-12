@@ -13,7 +13,7 @@ filtrarlos por artista y por cercanía a la ubicación del usuario, con acceso d
 compra de entradas y a cómo llegar.
 
 **Dentro del alcance:** listado y mapa de conciertos de AMBA, filtros, ingesta automática
-desde una única fuente, limpieza de datos vencidos.
+desde una única fuente, limpieza de duplicados y conservación del historial de conciertos pasados.
 
 **Fuera del alcance:** cuentas de usuario, venta de entradas (se redirige al vendedor),
 eventos fuera de AMBA, carga manual de eventos, notificaciones.
@@ -65,7 +65,8 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RF-23 | Solo se guardan conciertos cuyo lugar cae **dentro de AMBA** (ver RN-01). Los lugares no encontrados o fuera de AMBA se descartan, sin volver a consultarlos en la misma corrida. |
 | RF-24 | No se insertan conciertos ya existentes (mismo nombre, artista, fecha y lugar). |
 | RF-25 | La respuesta de la ingesta devuelve todos los eventos leídos (incluidos los descartados). |
-| RF-26 | Cada 24 h el sistema borra los conciertos con fecha anterior a hoy y los duplicados (conserva el de menor id). |
+| RF-26 | Cada 24 h el sistema borra los conciertos duplicados (conserva el de menor id). |
+| RF-26 bis | Los conciertos pasados **no se borran**: quedan en la base como historial (base de las métricas). Los listados públicos (`/conciertos`, `/conciertos_cerca`) devuelven solo los vigentes (RN-02). |
 | RF-27 | El backend expone `/ubicaciones` (lugares con coordenadas) y `/conciertos_cerca` (búsqueda espacial en el servidor). El frontend actual no los usa. |
 
 ## 4. Reglas de negocio
@@ -73,7 +74,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | ID | Regla |
 |---|---|
 | RN-01 | **Región AMBA**: latitud −35,15 a −34,2 y longitud −58,95 a −57,7. Fuente de verdad en `app/services/geocoding_service.py`, replicada en `web/src/constantes.js`. |
-| RN-02 | Un concierto es "vigente" si su fecha es hoy (en hora de Argentina) o posterior, o si no tiene fecha (los conciertos sin fecha no se borran). |
+| RN-02 | Un concierto es "vigente" si su fecha es hoy (en hora de Argentina) o posterior, o si no tiene fecha. La vigencia **se deriva de la fecha** en cada consulta: no hay una columna de estado ni una tabla de archivados. Un concierto pasado sigue en la base, pero no se muestra. |
 | RN-03 | Identidad de un concierto para deduplicar: (nombre, artista, fecha, lugar), con nulos considerados iguales. |
 | RN-04 | La fecha de la fuente viene como `DD/MM/AA` o `DD/MM/AAAA` y la hora como `HH:MM` o `HH:MM:SS`. Si no se puede interpretar, queda nula. |
 | RN-05 | Nombre y artista se recortan a 50 caracteres (largo de la columna). |
@@ -84,7 +85,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 
 | ID | Categoría | Requisito |
 |---|---|---|
-| RNF-01 | Rendimiento | `/conciertos` resuelve en una sola consulta SQL (JOIN), ordenada en la base. |
+| RNF-01 | Rendimiento | `/conciertos` resuelve en una sola consulta SQL (JOIN), filtrada y ordenada en la base. `conciertos.fecha` y `conciertos.ubicacion` tienen índice, porque la tabla crece con el historial. |
 | RNF-02 | Rendimiento | El filtrado es local en el navegador: los filtros no generan pedidos al servidor. |
 | RNF-03 | Rendimiento | Las respuestas de conciertos se pueden cachear 5 minutos (`Cache-Control: public, max-age=300`). Los assets del frontend tienen hash y se cachean 1 año. |
 | RNF-04 | Capacidad | Pool de conexiones a la base de 3 + 2 de desborde y 30 s de espera. Si se agota, la API responde 503. |
@@ -116,3 +117,4 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | `capacidad_total` siempre se guarda en 0 (la fuente no la informa). | Campo sin uso real. |
 | La ingesta corre dentro del pedido HTTP (varios minutos). | Si el cliente o un proxy corta por timeout, la ingesta igual continúa en el servidor, pero no se ve el resultado. |
 | No hay tests automatizados. | Las regresiones se detectan a mano. |
+| Un concierto cancelado o reprogramado queda en el historial: la ingesta no registra cuándo vio un concierto por última vez, así que no se distingue de uno que se realizó. Una reprogramación queda como dos conciertos (fecha vieja y fecha nueva). | Las métricas cuentan de más esos casos. Se podría resolver más adelante con una columna `visto_en` que la ingesta actualice cada vez que encuentra el concierto. |

@@ -2,14 +2,13 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import requests
 
 from app.extensions import db
 from app.models.concierto import Concierto
-from app.repositories.concierto_repository import eliminar_conciertos_duplicados, eliminar_conciertos_pasados
+from app.repositories.concierto_repository import eliminar_conciertos_duplicados
+from app.services.fechas import ahora_argentina
 from app.services.scraper_service import hay_ingesta_en_curso, ingestar_agendade
 
 logger = logging.getLogger(__name__)
@@ -21,10 +20,6 @@ INTERVALO_KEEP_ALIVE = 12 * 60  # 12 minutos
 FRANJA_DESDE_DEFECTO = 9  # 9:00
 FRANJA_HASTA_DEFECTO = 2  # 2:00 del día siguiente
 INTERVALO_LIMPIEZA = 24 * 60 * 60  # 24 horas
-
-# "Hoy" se calcula en hora argentina: el servidor corre en UTC y, entre las 21 y las 0 h,
-# date.today() ya devolvería mañana y borraría los conciertos de esa misma noche.
-ZONA_HORARIA = ZoneInfo("America/Argentina/Buenos_Aires")
 
 
 def dentro_de_franja(hora, desde, hasta):
@@ -43,7 +38,7 @@ def mantener_despierta(url, desde, hasta):
     while True:
         # Mientras corre una ingesta también se pingea, aunque sea fuera de la franja:
         # si no, Render podría dormir la instancia a mitad de camino.
-        if dentro_de_franja(datetime.now(ZONA_HORARIA).hour, desde, hasta) or hay_ingesta_en_curso():
+        if dentro_de_franja(ahora_argentina().hour, desde, hasta) or hay_ingesta_en_curso():
             try:
                 respuesta = requests.get(url, timeout=30)
                 logger.debug("Keep alive: %s", respuesta.status_code)
@@ -63,13 +58,16 @@ def _hora_de_entorno(nombre, defecto):
 
 
 def limpiar_conciertos(app):
-    """Borra conciertos pasados y duplicados en dos DELETE, sin cargar filas en memoria."""
+    """
+    Borra los conciertos duplicados con un DELETE, sin cargar filas en memoria.
+    Los conciertos pasados NO se borran: son el historial que usan las métricas
+    (los listados públicos ya los filtran por fecha).
+    """
     with app.app_context():
         try:
-            pasados = eliminar_conciertos_pasados(datetime.now(ZONA_HORARIA).date())
             duplicados = eliminar_conciertos_duplicados()
             db.session.commit()
-            logger.info("Limpieza: %d conciertos pasados y %d duplicados eliminados", pasados, duplicados)
+            logger.info("Limpieza: %d conciertos duplicados eliminados", duplicados)
         except Exception:
             logger.exception("Error en la limpieza de conciertos")
             db.session.rollback()
@@ -96,7 +94,7 @@ def ingesta_inicial(app):
 
 
 def programar_limpieza_diaria(app):
-    logger.info("Iniciando cronjob para eliminar conciertos pasados y duplicados")
+    logger.info("Iniciando cronjob para eliminar conciertos duplicados")
     while True:
         limpiar_conciertos(app)
         time.sleep(INTERVALO_LIMPIEZA)
