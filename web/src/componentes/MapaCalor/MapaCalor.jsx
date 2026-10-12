@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { MapContainer, TileLayer, ZoomControl, useMap } from "react-leaflet";
+import { CircleMarker, MapContainer, TileLayer, ZoomControl, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../../utilidades/leafletGlobal";
@@ -12,11 +12,15 @@ import { ARG_MAX_BOUNDS, CENTRO_BSAS } from "../../constantes";
 
 // Escala secuencial de un solo tono (azul de la marca): poco = tenue, mucho = intenso.
 // Nunca un arcoíris (el que trae leaflet.heat por defecto): sus colores no tienen un orden natural.
-// En el tema oscuro "intenso" es más claro, porque el mapa de fondo es oscuro.
+// Empieza transparente para que el calor se funda con el mapa, sin bordes duros. En el tema oscuro
+// "intenso" es más claro (brilla sobre el fondo oscuro); en el claro, el pico no llega a negro.
 const GRADIENTES = {
-  claro: { 0.25: "#4fa8de", 0.6: "#0277bd", 1: "#01304f" },
-  oscuro: { 0.25: "#0d6e96", 0.6: "#0a9fdc", 1: "#d4f3ff" },
+  claro: { 0: "rgba(2, 119, 189, 0)", 0.3: "rgba(79, 168, 222, 0.55)", 0.6: "#0277bd", 1: "#014a7f" },
+  oscuro: { 0: "rgba(10, 159, 220, 0)", 0.3: "rgba(10, 159, 220, 0.5)", 0.65: "#0a9fdc", 1: "#d4f3ff" },
 };
+
+// Punto chico en cada lugar, encima del calor: el calor muestra la concentración y el punto, dónde está cada lugar
+const COLOR_LUGAR = { claro: "#014a7f", oscuro: "#d4f3ff" };
 
 // Leyenda con los mismos colores. Se ordena por la clave porque JavaScript pone primero las
 // claves que parecen enteros ("1"), y la escala quedaría desordenada.
@@ -43,10 +47,13 @@ function CapaCalor({ puntos, tema }) {
     const capa = L.heatLayer(
       puntos.map(([lng, lat, cantidad]) => [lat, lng, intensidad(cantidad)]),
       {
-        radius: 28,
-        blur: 22,
-        max: maximo,
-        minOpacity: 0.35,
+        // Radio y difuminado en píxeles, pensados para el zoom inicial (todo el AMBA): más grandes,
+        // las manchas de los lugares del centro se pegan en una sola y no se distingue nada
+        radius: 22,
+        blur: 18,
+        // Un poco por encima del máximo: así el lugar con más conciertos no satura en una mancha plana
+        max: maximo * 1.25,
+        minOpacity: 0.08,
         // leaflet.heat divide cada intensidad por 2^(maxZoom - zoom). Con el máximo por defecto (18)
         // y el mapa en zoom 10, todo pesaba 256 veces menos y casi no se veía nada.
         maxZoom: ZOOM_CALOR,
@@ -82,6 +89,19 @@ function MapaCalor({ puntos }) {
           />
           <ZoomControl position="bottomright" />
           <CapaCalor puntos={puntos} tema={tema} />
+          {puntos.map(([lng, lat]) => (
+            <CircleMarker
+              key={`${lng},${lat}`}
+              center={[lat, lng]}
+              radius={2.5}
+              interactive={false}
+              pathOptions={{
+                stroke: false,
+                fillColor: COLOR_LUGAR[tema] ?? COLOR_LUGAR.claro,
+                fillOpacity: 0.9,
+              }}
+            />
+          ))}
         </MapContainer>
       </div>
 

@@ -155,8 +155,8 @@ flowchart TD
     main[main.jsx] --> App["App.jsx<br/>BrowserRouter"]
     App -- "/" --> Inicio[paginas/Inicio.jsx]
     App -- "/metricas (lazy)" --> Metricas[paginas/Metricas.jsx]
-    Inicio --> Encabezado & Filtros & Mapa & TarjetaGrupo & EstadoVacio & Cargando & PieDePagina
-    Metricas --> FiltroRango & TarjetaDato & PanelGrafico & GraficoBarras & MapaCalor
+    Inicio --> Encabezado & Portada & Filtros & Mapa & TarjetaGrupo & EstadoVacio & EsqueletoLista & PieDePagina
+    Metricas --> Portada & FiltroRango & TarjetaDato & PanelGrafico & GraficoBarras & MapaCalor & Cargando
     Metricas --> servicioM[servicios/metricasServicio.js]
     Inicio --> servicio[servicios/conciertoServicio.js]
     Inicio --> hook[hooks/useDebounce.js]
@@ -193,6 +193,15 @@ flowchart LR
   refs de `Marker`. Cada clic en "Ver en mapa" crea un objeto `seleccion` nuevo, así vuelve a
   enfocar aunque sea el mismo concierto.
 - Estilos: CSS Modules co-ubicados (`<nombre>.module.css`) y variables globales en `index.css`.
+- `Portada` es el encabezado común de las dos páginas (logo, título, descripción y datos
+  destacados). Las pantallas de carga (`EsqueletoLista`, `Cargando`) usan `useDemorado` para
+  avisar, pasados 4 s, que la API gratuita se está despertando.
+- Mapa base: tiles de OpenStreetMap con un filtro CSS por tema (gris suave en el claro, invertido
+  y azulado en el oscuro), definido una sola vez en `mapa.module.css` y reutilizado por `MapaCalor`.
+  Se evaluó CARTO (Positron), más sobrio, pero desde 2026 exige una clave de API y sin ella muestra
+  una marca de agua.
+- Las fechas de la lista se arman en hora local con `utilidades/fechas.js` (`partesFecha`,
+  `etiquetaCercania`), nunca con `new Date("YYYY-MM-DD")`.
 - `VITE_API_URL` se fija en el build. Si falta, se usa la API de producción.
 
 **Página `Metricas`.** El estado es el filtro (`periodo`, `desde`, `hasta`) y los datos. Cada cambio

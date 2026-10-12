@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaCalendarCheck, FaHistory, FaMapMarkerAlt, FaMicrophone, FaMusic } from "react-icons/fa";
 import Encabezado from "../componentes/Encabezado/Encabezado";
+import Portada, { DatoPortada } from "../componentes/Portada/Portada";
 import PieDePagina from "../componentes/PieDePagina/PieDePagina";
 import Cargando from "../componentes/Cargando/Cargando";
 import EstadoVacio from "../componentes/EstadoVacio/EstadoVacio";
@@ -9,7 +11,7 @@ import PanelGrafico from "../componentes/PanelGrafico/PanelGrafico";
 import GraficoBarras from "../componentes/GraficoBarras/GraficoBarras";
 import MapaCalor from "../componentes/MapaCalor/MapaCalor";
 import { metricasServicio } from "../servicios/metricasServicio";
-import { mesCorto, mesLargo } from "../utilidades/fechas";
+import { fechaIso, mesCorto, mesLargo } from "../utilidades/fechas";
 import { fechaLegible } from "../utilidades/texto";
 import { PERIODO_INICIAL, PERIODOS } from "../utilidades/periodos";
 import styles from "./metricas.module.css";
@@ -27,6 +29,12 @@ const textoRango = (fila) =>
 const textoRangoCorto = (texto) => texto.replace(" km o más", "+").replace(" km", "");
 
 const COLUMNA_CANTIDAD = { clave: "cantidad", titulo: "Conciertos" };
+
+// Con menos meses que esto, se avisa que el historial recién se está armando
+const MESES_HISTORIAL_CORTO = 4;
+
+// "2026-10": el mes actual, para marcarlo en el gráfico mensual
+const mesActual = () => fechaIso(new Date()).slice(0, 7);
 
 function NotaDatos({ resumen }) {
   const sinFecha = resumen.sin_fecha;
@@ -90,6 +98,8 @@ const Metricas = () => {
   );
 
   const resumen = datos?.resumen;
+  const historialCorto = datos && datos.meses.length < MESES_HISTORIAL_CORTO;
+  const esteMes = mesActual();
 
   let contenido;
   if (error) {
@@ -101,12 +111,27 @@ const Metricas = () => {
   } else {
     contenido = (
       <div className={cargando ? styles.actualizando : undefined} aria-busy={cargando}>
+        {historialCorto && resumen.primera_fecha && (
+          <p className={styles.aviso}>
+            <FaHistory aria-hidden="true" className={styles.avisoIcono} />
+            <span>
+              El historial se empezó a guardar el {fechaLegible(resumen.primera_fecha)}. Los gráficos se van a
+              ir completando con cada actualización, dos veces por día.
+            </span>
+          </p>
+        )}
+
         <div className={styles.tarjetas}>
-          <TarjetaDato etiqueta="Conciertos" valor={resumen.total} />
-          <TarjetaDato etiqueta="Vigentes" valor={resumen.vigentes} detalle="de hoy en adelante" />
-          <TarjetaDato etiqueta="Pasados" valor={resumen.pasados} detalle="historial" />
-          <TarjetaDato etiqueta="Lugares" valor={resumen.lugares} />
-          <TarjetaDato etiqueta="Artistas" valor={resumen.artistas} />
+          <TarjetaDato icono={FaMusic} etiqueta="Conciertos" valor={resumen.total} />
+          <TarjetaDato
+            icono={FaCalendarCheck}
+            etiqueta="Vigentes"
+            valor={resumen.vigentes}
+            detalle="de hoy en adelante"
+          />
+          <TarjetaDato icono={FaHistory} etiqueta="Pasados" valor={resumen.pasados} detalle="historial" />
+          <TarjetaDato icono={FaMapMarkerAlt} etiqueta="Lugares" valor={resumen.lugares} />
+          <TarjetaDato icono={FaMicrophone} etiqueta="Artistas" valor={resumen.artistas} />
         </div>
 
         <div className={styles.grilla}>
@@ -122,6 +147,7 @@ const Metricas = () => {
               claveCategoria="mes"
               formatearEje={mesCorto}
               formatearDetalle={mesLargo}
+              marca={{ categoria: esteMes, texto: "Este mes" }}
             />
           </PanelGrafico>
 
@@ -131,7 +157,7 @@ const Metricas = () => {
             columnas={[{ clave: "nombre", titulo: "Lugar" }, COLUMNA_CANTIDAD]}
             filas={datos.lugares}
           >
-            <GraficoBarras datos={datos.lugares} claveCategoria="nombre" horizontal mostrarValores />
+            <GraficoBarras datos={datos.lugares} claveCategoria="nombre" horizontal numerar mostrarValores />
           </PanelGrafico>
 
           <PanelGrafico
@@ -144,7 +170,13 @@ const Metricas = () => {
             ]}
             filas={datos.artistas}
           >
-            <GraficoBarras datos={datos.artistas} claveCategoria="artista" horizontal mostrarValores />
+            <GraficoBarras
+              datos={datos.artistas}
+              claveCategoria="artista"
+              horizontal
+              numerar
+              mostrarValores
+            />
           </PanelGrafico>
 
           <PanelGrafico
@@ -177,10 +209,17 @@ const Metricas = () => {
       <Encabezado />
 
       <main className="contenedor-principal">
-        <h1 className={styles.titulo}>Métricas</h1>
-        <p className={styles.descripcion}>
-          Cómo se mueve la música en vivo en Buenos Aires y alrededores: cuándo, dónde y quiénes tocan.
-        </p>
+        <Portada
+          titulo="Métricas"
+          descripcion="Cómo se mueve la música en vivo en Buenos Aires y alrededores: cuándo, dónde y quiénes tocan."
+        >
+          {!error && (
+            <>
+              <DatoPortada cargando={!datos} valor={resumen?.total} texto="conciertos analizados" />
+              <DatoPortada cargando={!datos} valor={resumen?.lugares} texto="lugares" />
+            </>
+          )}
+        </Portada>
 
         <FiltroRango
           filtro={filtro}

@@ -31,3 +31,34 @@ export function mesCorto(mes) {
 export function mesLargo(mes) {
   return mesComoFecha(mes).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
 }
+
+// "YYYY-MM-DD" -> Date en hora local (null si no hay fecha válida)
+export function fechaLocal(fecha) {
+  if (typeof fecha !== "string") return null;
+  const [anio, mes, dia] = fecha.split("-").map(Number);
+  if (!anio || !mes || !dia) return null;
+  return new Date(anio, mes - 1, dia);
+}
+
+// Partes de la fecha para el bloque tipo entrada: { dia: "17", mes: "oct", diaSemana: "vie" }
+export function partesFecha(fecha) {
+  const valor = fechaLocal(fecha);
+  if (!valor) return null;
+  const formato = (opciones) => valor.toLocaleDateString("es-AR", opciones).replace(".", "");
+  return {
+    dia: String(valor.getDate()),
+    mes: formato({ month: "short" }),
+    diaSemana: formato({ weekday: "short" }),
+  };
+}
+
+// "Hoy" o "Mañana" si la fecha es cercana; null en cualquier otro caso.
+export function etiquetaCercania(fecha, hoy = new Date()) {
+  const valor = fechaLocal(fecha);
+  if (!valor) return null;
+  const inicioDeHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const dias = Math.round((valor - inicioDeHoy) / 86_400_000);
+  if (dias === 0) return "Hoy";
+  if (dias === 1) return "Mañana";
+  return null;
+}

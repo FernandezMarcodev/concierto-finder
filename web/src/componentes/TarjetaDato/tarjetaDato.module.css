@@ -11,8 +11,24 @@
 }
 
 .etiqueta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
+}
+
+/* Ícono en un círculo del color de la marca */
+.icono {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent-light);
+  color: var(--color-accent);
+  font-size: 12px;
 }
 
 .valor {
@@ -34,6 +50,12 @@
 
   .etiqueta {
     font-size: var(--text-xs);
+  }
+
+  .icono {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
   }
 
   .valor {

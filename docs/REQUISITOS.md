@@ -40,11 +40,11 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RF-01 | El sistema muestra todos los conciertos vigentes al cargar la página, en una lista y en un mapa. |
 | RF-02 | La lista agrupa los conciertos **por lugar** (coordenada exacta): una tarjeta por lugar con la cantidad de conciertos y cada concierto en una fila. |
 | RF-03 | Dentro de cada lugar, los conciertos se ordenan por fecha ascendente. |
-| RF-04 | Cada fila muestra artista, nombre del evento (si difiere del artista), fecha (`d/m/aaaa`) y hora (`HH:MM`, si se conoce). Sin fecha se muestra "Fecha a confirmar". |
-| RF-05 | Cada fila ofrece **Entradas** (abre la URL de compra en otra pestaña; solo si existe), **Ver en mapa** y **Cómo llegar** (indicaciones de Google Maps; ambas solo si el lugar tiene coordenadas). |
+| RF-04 | Cada fila muestra la fecha en un bloque tipo entrada (día de la semana, número y mes; "A confirmar" si no hay fecha), el artista, el nombre del evento (si difiere del artista) y la hora (`HH:MM h`; "Horario a confirmar" si no se conoce). Los conciertos de hoy y de mañana llevan la etiqueta **Hoy** o **Mañana**. |
+| RF-05 | Cada fila ofrece, en este orden, **Entradas** (abre la URL de compra en otra pestaña; solo si existe), **Ver en mapa** y **Cómo llegar** (indicaciones de Google Maps; ambas solo si el lugar tiene coordenadas). |
 | RF-06 | **Ver en mapa** centra el mapa en el lugar (zoom 15), abre el popup del marcador, resalta el concierto y desplaza la página hasta el mapa. |
-| RF-07 | El mapa muestra **un marcador por lugar**. El popup lista el o los conciertos del lugar con fecha, hora y enlace a entradas. |
-| RF-08 | El encabezado muestra la cantidad de conciertos que cumplen los filtros. |
+| RF-07 | El mapa muestra **un marcador por lugar**, con la cantidad de conciertos del lugar (también el 1). En el tema claro el mapa base se muestra en gris suave, para que se destaquen los datos. El popup lista el o los conciertos del lugar con fecha, hora y enlace a entradas. |
+| RF-08 | Una portada con el logo muestra, según los filtros aplicados, la cantidad de conciertos, de lugares y de conciertos de hoy (este último, solo si hay). |
 | RF-09 | **Buscador por artista**: filtra por coincidencia parcial, sin distinguir mayúsculas ni acentos ("paez" encuentra "Páez"). |
 | RF-10 | El buscador sugiere hasta 8 artistas existentes mientras se escribe. Enter elige la primera sugerencia, Escape o un clic fuera cierra la lista, y un botón limpia la búsqueda. Si no hay coincidencias se indica "Sin resultados". |
 | RF-11 | **Filtro por cercanía**: el visitante puede activar su ubicación (geolocalización del navegador) y desactivarla con el mismo botón. |
@@ -52,7 +52,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RF-13 | El radio se elige con un slider de 1 a 40 km (inicial 5 km) o con atajos de 5, 20 y 40 km. El mapa dibuja la posición del usuario y el círculo del radio, y se encuadra en él. |
 | RF-14 | Los filtros de artista y radio se combinan (Y lógico) y se aplican 300 ms después del último cambio. |
 | RF-15 | Si no hay resultados se muestra un estado vacío con un mensaje para ajustar la búsqueda. |
-| RF-16 | Si la API falla, se muestra un estado de error con el botón **Reintentar** (recarga la página). Mientras carga se muestra un indicador. |
+| RF-16 | Si la API falla, se muestra un estado de error con el botón **Reintentar** (recarga la página). Mientras carga se muestran tarjetas de carga con la forma de la lista; si tarda más de 4 s, se avisa que el servidor se está despertando (la primera carga puede tardar hasta un minuto, RNF-05). La página de métricas da el mismo aviso. |
 
 ### 3.2 Ingesta y mantenimiento de datos (operador / sistema)
 
@@ -75,11 +75,11 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | ID | Requisito |
 |---|---|
 | RF-28 | Una página **Métricas** (`/metricas`), accesible desde el encabezado, muestra indicadores y gráficos calculados sobre todo el historial (vigentes y pasados). |
-| RF-29 | Indicadores: total de conciertos, vigentes, pasados, lugares distintos y artistas distintos. |
+| RF-29 | Indicadores con ícono: total de conciertos, vigentes, pasados, lugares distintos y artistas distintos. Mientras haya menos de 4 meses de historial, un aviso explica desde cuándo se guarda. El gráfico por mes marca el mes actual y los rankings muestran la posición (1, 2, 3…). |
 | RF-30 | **Conciertos por mes** (estacionalidad): gráfico de columnas que incluye los meses sin conciertos. |
 | RF-31 | **Lugares más activos** y **artistas que más tocan**: rankings de los 10 primeros, en barras horizontales con el valor al final de cada barra. |
 | RF-32 | **Distancia al Obelisco**: cantidad de conciertos por rango de distancia (0–5, 5–10, 10–20, 20–40 y 40 km o más). |
-| RF-33 | **Mapa de calor** sobre el mapa de Leaflet, con una escala de un solo color y su leyenda ("menos" a "más conciertos"). |
+| RF-33 | **Mapa de calor** sobre el mapa de Leaflet, con una escala de un solo color que empieza transparente, un punto por lugar encima y su leyenda ("menos" a "más conciertos"). |
 | RF-34 | Un filtro de período (Todo, Últimos 12 meses, Últimos 3 meses, Próximos, o fechas a medida) actualiza todas las métricas. Si "desde" es posterior a "hasta" se avisa y no se consulta. |
 | RF-35 | Cada gráfico ofrece sus datos en una tabla desplegable. La página indica desde qué fecha hay datos y cuántos conciertos no tienen fecha. |
 | RF-36 | Las métricas también se exponen como API REST de solo lectura bajo `/api/metricas/...` (ver [API.md](API.md)). |
