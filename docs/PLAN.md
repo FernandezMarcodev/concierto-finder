@@ -100,8 +100,8 @@ flowchart LR
     ci --> cal[feat/agregar-calendario]
     fecha --> url[feat/filtros-en-url]
     ci --> busq[feat/registro-busquedas]
-    hist --> est[feat/estadisticas]
-    busq --> est
+    hist --> tests[chore/tests-pytest] --> api[feat/metricas-api] --> est[feat/metricas-ui]
+    api -.-> zonas[feat/metricas-zonas]
     ci --> tg[feat/telegram-semanal]
     est -.-> spike[spike/auth-proveedor]
     spike --> login[feat/auth-login]
@@ -120,7 +120,10 @@ Las ramas sin flecha entre sí son **independientes** y se pueden hacer en paral
 | 3 | `feat/agregar-calendario` | 1 | Frontend | — | S | 0 |
 | 4 | `feat/filtros-en-url` | 1 | Frontend | — | S | 2 |
 | 5 | `feat/registro-busquedas` | 2 | Backend + frontend | 0004 | M | 0 |
-| 6 | `feat/estadisticas` | 2 | Backend + frontend | — | M | 1, 5 |
+| 6a | `chore/tests-pytest` | 2 | Backend (tests) + datos ficticios | — | M | 1 |
+| 6b | `feat/metricas-api` | 2 | Backend | — | M | 6a |
+| 6c | `feat/metricas-ui` | 2 | Frontend | — | M | 6b |
+| 6d | `feat/metricas-zonas` (opcional) | 2 | Backend + frontend | 0004 | M | 6b |
 | 7 | `feat/telegram-semanal` | 2 | CI | — | S | 0 |
 | 8 | `spike/auth-proveedor` | 3 | Investigación | — | S | — |
 | 9 | `feat/auth-login` | 3 | Backend + frontend | 0005 | L | 8 |
@@ -221,20 +224,27 @@ Saber qué artistas busca la gente, en especial **los que no tienen fecha**.
 **Terminada cuando:** escribir "fito" y esperar deja una fila en `busquedas`; escribir
 "f-i-t-o" letra por letra no deja cuatro filas.
 
-#### 6. `feat/estadisticas`
+#### 6. Métricas (`chore/tests-pytest`, `feat/metricas-api`, `feat/metricas-ui`)
 
-- `repositories/estadisticas_repository.py` (nuevo): consultas `GROUP BY`: lugares con más
-  conciertos, artistas que más tocan, conciertos por día de la semana y por mes, y artistas más
-  buscados sin resultados.
-- `GET /estadisticas`: devuelve todo junto (con caché, igual que `/conciertos`).
-- Frontend: página nueva "Estadísticas". Es el primer caso con dos páginas, así que se agrega
-  `react-router-dom` con las rutas `/` y `/estadisticas`, y un link en el encabezado.
-- Gráficos simples: barras hechas con CSS, sin librería, o una librería liviana si hace falta.
-- Recargar en `/estadisticas` ya funciona: Cloudflare Pages sirve `index.html` en cualquier
-  ruta mientras el proyecto no tenga un `404.html`, y el nginx local hace lo mismo con
-  `try_files`. No agregues un `404.html` sin tener esto en cuenta.
+Reemplaza a la rama `feat/estadisticas` original. Se partió en tres ramas para que cada PR se pueda
+revisar solo. Necesita el historial (rama 1). Ya no depende de `feat/registro-busquedas`: la métrica
+de "artistas más buscados sin resultados" queda para cuando exista esa rama.
 
-**Terminada cuando:** la página muestra los cuatro rankings con los datos reales acumulados.
+- **`chore/tests-pytest`:** tests con pytest contra PostGIS real (`docker-compose.test.yml`) y el
+  comando `flask --app app sembrar` para cargar datos ficticios.
+- **`feat/metricas-api`:** `GET /api/metricas/{resumen, conciertos_por_mes, lugares, artistas,
+  densidad, distancias}` con filtro de fechas. Todo se calcula en SQL/PostGIS
+  (`repositories/metricas_repository.py`) y los parámetros se validan en
+  `services/metricas_service.py`. Ver [API.md](API.md).
+- **`feat/metricas-ui`:** página `/metricas` con `react-router-dom`, indicadores, gráficos con
+  Recharts y mapa de calor con leaflet.heat. Se carga con `React.lazy`.
+- **`feat/metricas-zonas` (opcional, después):** conciertos por partido del AMBA, con la capa de
+  departamentos del IGN. **Antes de descargarla hay que verificar la licencia vigente en el portal
+  del IGN y confirmarlo.** Incluye la migración `0004` (tabla `zonas` con geometrías) y un mapa de
+  coropletas.
+
+**Terminada cuando:** la página muestra las métricas con los datos acumulados, el filtro de fechas
+las actualiza y los tests de servicios y endpoints pasan.
 
 #### 7. `feat/telegram-semanal`
 
@@ -300,5 +310,6 @@ decidir.
 3. En paralelo: **`feat/filtro-fecha`** y **`feat/agregar-calendario`**.
 4. **`feat/filtros-en-url`** (después de la de fecha).
 5. **`feat/registro-busquedas`** y **`feat/telegram-semanal`**, en paralelo.
-6. **`feat/estadisticas`**, cuando haya algunas semanas de datos acumulados.
+6. **Métricas** (`chore/tests-pytest` → `feat/metricas-api` → `feat/metricas-ui`). Con datos ficticios se
+   pueden desarrollar ya; con datos reales, tienen sentido después de algunas semanas de historial.
 7. Etapa 3, recién con lo anterior estable.

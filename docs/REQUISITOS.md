@@ -10,10 +10,11 @@
 Concierto Finder es una cartelera web de **próximos conciertos en Buenos Aires y alrededores
 (AMBA)**. Junta los eventos publicados en agendade.com.ar, los ubica en un mapa y permite
 filtrarlos por artista y por cercanía a la ubicación del usuario, con acceso directo a la
-compra de entradas y a cómo llegar.
+compra de entradas y a cómo llegar. Una página de **métricas** muestra cómo se distribuyen los
+conciertos en el tiempo y en el espacio, a partir del historial acumulado.
 
 **Dentro del alcance:** listado y mapa de conciertos de AMBA, filtros, ingesta automática
-desde una única fuente, limpieza de duplicados y conservación del historial de conciertos pasados.
+desde una única fuente, limpieza de duplicados, conservación del historial de conciertos pasados y métricas sobre ese historial.
 
 **Fuera del alcance:** cuentas de usuario, venta de entradas (se redirige al vendedor),
 eventos fuera de AMBA, carga manual de eventos, notificaciones.
@@ -69,6 +70,20 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RF-26 bis | Los conciertos pasados **no se borran**: quedan en la base como historial (base de las métricas). Los listados públicos (`/conciertos`, `/conciertos_cerca`) devuelven solo los vigentes (RN-02). |
 | RF-27 | El backend expone `/ubicaciones` (lugares con coordenadas) y `/conciertos_cerca` (búsqueda espacial en el servidor). El frontend actual no los usa. |
 
+### 3.3 Métricas (visitante)
+
+| ID | Requisito |
+|---|---|
+| RF-28 | Una página **Métricas** (`/metricas`), accesible desde el encabezado, muestra indicadores y gráficos calculados sobre todo el historial (vigentes y pasados). |
+| RF-29 | Indicadores: total de conciertos, vigentes, pasados, lugares distintos y artistas distintos. |
+| RF-30 | **Conciertos por mes** (estacionalidad): gráfico de columnas que incluye los meses sin conciertos. |
+| RF-31 | **Lugares más activos** y **artistas que más tocan**: rankings de los 10 primeros, en barras horizontales con el valor al final de cada barra. |
+| RF-32 | **Distancia al Obelisco**: cantidad de conciertos por rango de distancia (0–5, 5–10, 10–20, 20–40 y 40 km o más). |
+| RF-33 | **Mapa de calor** sobre el mapa de Leaflet, con una escala de un solo color y su leyenda ("menos" a "más conciertos"). |
+| RF-34 | Un filtro de período (Todo, Últimos 12 meses, Últimos 3 meses, Próximos, o fechas a medida) actualiza todas las métricas. Si "desde" es posterior a "hasta" se avisa y no se consulta. |
+| RF-35 | Cada gráfico ofrece sus datos en una tabla desplegable. La página indica desde qué fecha hay datos y cuántos conciertos no tienen fecha. |
+| RF-36 | Las métricas también se exponen como API REST de solo lectura bajo `/api/metricas/...` (ver [API.md](API.md)). |
+
 ## 4. Reglas de negocio
 
 | ID | Regla |
@@ -80,6 +95,11 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RN-05 | Nombre y artista se recortan a 50 caracteres (largo de la columna). |
 | RN-06 | La navegación del mapa está limitada a Argentina; solo se dibujan marcadores dentro de AMBA. |
 | RN-07 | El centro inicial del mapa es el Obelisco (−34,6037; −58,3816), con zoom 11. |
+| RN-08 | **Filtro de las métricas**: `desde` y `hasta` se aplican sobre la fecha del concierto (no la de ingesta) e incluyen los dos extremos. Sin filtro cuentan todos los conciertos; con filtro, los que no tienen fecha quedan afuera. Los conciertos sin fecha nunca entran en el gráfico por mes. |
+| RN-09 | Las métricas por lugar, el mapa de calor y las distancias excluyen los conciertos sin lugar o sin coordenadas. |
+| RN-10 | **Distancias**: geodésicas, en km y en línea recta, desde el Obelisco por defecto. Los rangos son semiabiertos `[desde, hasta)` y el último no tiene tope. |
+| RN-11 | **Mismo artista**: dos nombres son el mismo artista si coinciden sin distinguir mayúsculas, acentos ni espacios en los extremos ("Sofía Ríos" = "sofia rios"). En los rankings se muestra la escritura más frecuente. |
+| RN-12 | **Cobertura**: las métricas solo reflejan lo publicado en agendade.com.ar (primeras 5 páginas) dentro de AMBA, desde que se conserva el historial. No son el total de conciertos de la ciudad. |
 
 ## 5. Requisitos no funcionales
 
@@ -99,6 +119,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RNF-12 | Portabilidad | El stack completo levanta con `docker compose up --build`. |
 | RNF-13 | Convención | Código, identificadores, comentarios y textos de la interfaz en español. |
 | RNF-14 | Calidad | El backend tiene tests automatizados (pytest) que corren contra PostgreSQL + PostGIS real y crean el esquema con las migraciones. Ver [OPERACION.md](OPERACION.md) §9. |
+| RNF-15 | Rendimiento | Las métricas se calculan en la base (SQL/PostGIS): cada endpoint hace una sola consulta y devuelve resultados agregados, nunca filas de conciertos. Se cachean 5 minutos. La página de métricas se descarga aparte (code splitting) y no agrega peso a la principal. |
 
 ## 6. Restricciones y supuestos
 

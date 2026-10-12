@@ -8,10 +8,13 @@
 
 Aplicación web de dos piezas, más una base geoespacial:
 
-- **Frontend SPA** (React 18 + Vite + Leaflet) que descarga todos los conciertos una vez y
-  hace el filtrado, el agrupamiento y el mapa en el navegador.
+- **Frontend SPA** (React 18 + Vite + Leaflet) con dos páginas: **Conciertos**, que descarga
+  todos los conciertos vigentes una vez y hace el filtrado, el agrupamiento y el mapa en el
+  navegador, y **Métricas**, que pide resultados ya agregados a la API y los dibuja con Recharts y
+  un mapa de calor (leaflet.heat).
 - **API REST** (Flask 3 + SQLAlchemy 2.0 + GeoAlchemy2, servida con waitress), de solo lectura
-  para el público, con un endpoint protegido de ingesta (scraping) y dos tareas en segundo plano.
+  para el público, con endpoints de métricas calculadas en SQL/PostGIS, un endpoint protegido de
+  ingesta (scraping) y tareas en segundo plano.
 - **PostgreSQL 16 + PostGIS 3.4** con dos tablas.
 
 ### 1.1 Contexto (C4 nivel 1)
@@ -26,7 +29,7 @@ flowchart LR
     tiles[(Tiles OpenStreetMap)]
     gmaps[(Google Maps)]
 
-    visitante -- "consulta conciertos" --> sistema
+    visitante -- "consulta conciertos y métricas" --> sistema
     operador -- "dispara ingesta (token)" --> sistema
     sistema -- "scraping HTML" --> agendade
     sistema -- "geocodifica lugares" --> nominatim
@@ -52,6 +55,7 @@ flowchart LR
 
     estaticos -- "HTML/JS/CSS" --> spa
     spa -- "GET /conciertos (JSON)" --> flask
+    spa -- "GET /api/metricas/* (JSON agregado)" --> flask
     flask -- "SQLAlchemy / psycopg2" --> db
     hilos -- "DELETE de duplicados (diario)" --> db
     hilos -. "ping cada 12 min (9 a 2 h)" .-> flask
@@ -59,7 +63,7 @@ flowchart LR
 
 | Contenedor | Tecnología | Producción | Local (`docker compose`) |
 |---|---|---|---|
-| web | React 18, Vite 7, react-leaflet 4, nginx | Cloudflare Pages (`conciertosfinder.pages.dev`) | servicio `web` en :5173 |
+| web | React 18, Vite 7, react-router 7, react-leaflet 4, Recharts 3, leaflet.heat, nginx | Cloudflare Pages (`conciertosfinder.pages.dev`) | servicio `web` en :5173 |
 | app | Python 3.12, Flask 3, SQLAlchemy 2.0, GeoAlchemy2, waitress | Render (`concierto-finder.onrender.com`) | servicio `app` en :8000 |
 | db | PostgreSQL 16 + PostGIS 3.4 | — | servicio `db`, volumen `pgdata`, host :55432 |
 
@@ -69,13 +73,15 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    routes["routes/ (blueprints)<br/>index · conciertos · ubicaciones · autorizacion"]
+    cli["cli.py<br/>flask sembrar"]
+    routes["routes/ (blueprints)<br/>index · conciertos · ubicaciones · metricas · autorizacion"]
     schemas["schemas/<br/>serializadores a dict"]
-    services["services/<br/>scraper · geocoding · tareas · http"]
-    repos["repositories/<br/>concierto_repository · ubicacion_repository"]
+    services["services/<br/>scraper · geocoding · tareas · http · fechas<br/>metricas_service · datos_ficticios"]
+    repos["repositories/<br/>concierto_repository · ubicacion_repository<br/>metricas_repository (SQL agregado)"]
     models["models/<br/>Concierto · Ubicacion"]
     ext["extensions.py<br/>db (SQLAlchemy) · migrate (Flask-Migrate)"]
 
+    cli --> services
     routes --> repos
     routes --> schemas
     routes --> services
@@ -90,13 +96,17 @@ flowchart TD
 | `__init__.py` | `create_app()`: config, CORS, SQLAlchemy, Flask-Migrate, blueprints, 503 ante `TimeoutError` del pool, `session.remove()` al cerrar cada pedido. |
 | `main.py` | Entrypoint de producción: configura `logging`, crea la app y **arranca los hilos de fondo**. |
 | `config.py` | Lee `DATABASE_URL` (obligatoria, falla al importar si falta), `SCRAPER_TOKEN` y las opciones del pool. |
-| `routes/` | HTTP. `autorizacion.py` define `verificar_token_ingesta()`, que la ruta de ingesta llama antes de empezar. Las rutas no contienen consultas. |
+| `routes/` | HTTP. `autorizacion.py` define `verificar_token_ingesta()`, que la ruta de ingesta llama antes de empezar. `metricas.py` (prefijo `/api/metricas`) convierte `ParametroInvalido` en un 400. Las rutas no contienen consultas ni validaciones. |
+| `cli.py` | Comandos de consola (`flask --app app sembrar`): datos ficticios para desarrollo. |
 | `repositories/` | **Todas** las consultas: listados de vigentes con `joinedload` y orden por fecha, búsqueda espacial `ST_DWithin`, existencia y borrado masivo de duplicados. Las funciones de listado reciben `hoy` como parámetro. |
 | `schemas/` | Serialización manual a dict/JSON (`[lng, lat]`, fechas ISO o `null`). |
 | `services/scraper_service.py` | Ingesta: descarga, parseo, resolución de lugar, deduplicación y alta. |
 | `services/geocoding_service.py` | Nominatim y la regla de región AMBA (fuente de verdad de los límites). |
 | `services/tareas.py` | Hilos `mantener_despierta` (keep alive dentro de una franja horaria, o mientras corre una ingesta), `programar_limpieza_diaria` e `ingesta_inicial` (solo si la base está vacía). |
 | `services/http.py` | `requests.Session` compartida y timeout por defecto. |
+| `services/metricas_service.py` | Lee y valida los parámetros de las métricas (fechas, límite, celda, punto, rangos), aplica los valores por defecto y llama al repositorio. |
+| `repositories/metricas_repository.py` | Las seis consultas de métricas en SQL: `GROUP BY`, `generate_series`, `mode()`, `ST_SnapToGrid`, `ST_Distance` sobre `Geography`. Todas comparten el filtro de fechas con parámetros enlazados. |
+| `services/datos_ficticios.py` | Generador determinístico de conciertos ficticios (con estacionalidad) para desarrollo. |
 | `services/fechas.py` | `hoy_argentina()` / `ahora_argentina()`: la fecha y la hora en `America/Argentina/Buenos_Aires` (el servidor corre en UTC). |
 
 ### 2.2 Modelo de datos
@@ -142,8 +152,12 @@ erDiagram
 
 ```mermaid
 flowchart TD
-    main[main.jsx] --> App[App.jsx] --> Inicio[paginas/Inicio.jsx]
+    main[main.jsx] --> App["App.jsx<br/>BrowserRouter"]
+    App -- "/" --> Inicio[paginas/Inicio.jsx]
+    App -- "/metricas (lazy)" --> Metricas[paginas/Metricas.jsx]
     Inicio --> Encabezado & Filtros & Mapa & TarjetaGrupo & EstadoVacio & Cargando & PieDePagina
+    Metricas --> FiltroRango & TarjetaDato & PanelGrafico & GraficoBarras & MapaCalor
+    Metricas --> servicioM[servicios/metricasServicio.js]
     Inicio --> servicio[servicios/conciertoServicio.js]
     Inicio --> hook[hooks/useDebounce.js]
     Inicio --> util[utilidades/<br/>filtros · grupos · geo · texto]
@@ -153,7 +167,12 @@ flowchart TD
     util --> constantes[constantes.js]
 ```
 
-**Flujo de datos de `Inicio`** (única página, sin router ni librería de estado):
+Dos páginas con `react-router-dom` (`/` y `/metricas`); cualquier otra ruta redirige a `/`.
+`Metricas` se carga con `React.lazy`: Recharts y leaflet.heat van en un archivo aparte que solo
+se descarga al visitar la página. Recargar en `/metricas` funciona porque nginx (`try_files`) y
+Cloudflare Pages (sin `404.html`) devuelven `index.html` en cualquier ruta.
+
+**Flujo de datos de `Inicio`** (sin librería de estado):
 
 ```mermaid
 flowchart LR
@@ -175,6 +194,16 @@ flowchart LR
   enfocar aunque sea el mismo concierto.
 - Estilos: CSS Modules co-ubicados (`<nombre>.module.css`) y variables globales en `index.css`.
 - `VITE_API_URL` se fija en el build. Si falta, se usa la API de producción.
+
+**Página `Metricas`.** El estado es el filtro (`periodo`, `desde`, `hasta`) y los datos. Cada cambio
+de filtro pide en paralelo los seis endpoints (`Promise.all`). Mientras llegan, los datos anteriores
+siguen a la vista, atenuados, y la respuesta de un pedido viejo se descarta.
+- **Gráficos:** `GraficoBarras` (Recharts) dibuja columnas o barras horizontales de una sola serie.
+  Los colores se aplican por CSS con las variables del tema (`--color-grafico`, validado contra la
+  superficie de cada tema), no por props.
+- **Mapa de calor:** `MapaCalor` reutiliza el contenedor, los tiles y el filtro oscuro de `Mapa`,
+  y crea la capa de `leaflet.heat` con `useMap`. Usa una escala de un solo tono que cambia con el
+  tema (lo detecta `useTemaActual`, que observa `data-tema`).
 
 ## 4. Flujos principales
 
@@ -232,6 +261,30 @@ Hilo `programar_limpieza_diaria`: al arrancar y luego cada 24 h ejecuta, en una 
 `DELETE` de los duplicados (cuando hay otro con menor id y la misma identidad). Los conciertos
 pasados **no** se borran: son el historial.
 
+### 4.4 Página de métricas
+
+```mermaid
+sequenceDiagram
+    participant N as Navegador (Metricas.jsx)
+    participant A as API (routes/metricas.py)
+    participant S as metricas_service
+    participant R as metricas_repository
+    participant D as PostGIS
+    N->>A: GET /api/metricas/... ?desde=&hasta= (6 pedidos en paralelo)
+    A->>S: leer_filtro(request.args), leer_limite(...)
+    alt parámetro inválido
+        S-->>A: ParametroInvalido
+        A-->>N: 400 {"error": "..."}
+    else válido
+        S->>R: consulta con desde, hasta (y hoy, punto, rangos...)
+        R->>D: 1 SELECT agregado (GROUP BY / generate_series / ST_SnapToGrid / ST_Distance)
+        D-->>R: filas ya agregadas (decenas, no miles)
+        R-->>A: filas
+        A-->>N: 200 {filtro, datos} (Cache-Control 300 s)
+    end
+    Note over N: Recharts dibuja los gráficos.<br/>leaflet.heat dibuja la densidad sobre el mapa.
+```
+
 ## 5. Decisiones de diseño
 
 | # | Decisión | Motivo | Consecuencia |
@@ -245,6 +298,9 @@ pasados **no** se borran: son el historial.
 | D-7 | Migraciones con Alembic y base idempotente | Versionar el esquema sin romper las bases creadas con `create_all()`. | Los cambios de modelo requieren `flask db migrate` y revisar el script. |
 | D-8 | Historial con **vigencia derivada de la fecha** (en lugar de una tabla de archivados o una columna `estado`) | La regla de vigencia (RN-02) ya depende solo de la fecha: guardarla aparte duplicaría el dato y obligaría a un job que la mantenga al día. Una tabla de archivados duplicaría el esquema y haría que cada métrica necesite un `UNION`. | Todas las consultas públicas deben filtrar por fecha (está centralizado en `_consulta_vigentes`). La tabla crece sin límite: por eso los índices de la `0003`. |
 | D-9 | Tests contra **PostGIS real** (contenedor descartable) en lugar de SQLite o mocks | Las consultas usan PostGIS (`ST_DWithin`, `Geography`) e `IS NOT DISTINCT FROM`: SQLite no las tiene, y un mock no prueba el SQL. El esquema se crea con las migraciones, así también quedan probadas. | Los tests necesitan Docker (o un PostgreSQL con PostGIS). Son algo más lentos que en memoria (≈ 2 s para toda la suite). |
+| D-10 | **Métricas calculadas en SQL** (no en Python ni en el navegador) | Con el historial, la tabla crece sin límite. Agregar en la base trae solo decenas de filas; traer todos los conciertos para contarlos en Python crecería con el historial y ocuparía memoria y el pool. PostGIS además resuelve las distancias y la grilla del mapa de calor. | El SQL es más largo que un bucle en Python; por eso cada consulta está comentada y tiene tests con resultados calculados a mano. |
+| D-11 | **Recharts** para los gráficos y **leaflet.heat** para el mapa de calor, con la página de métricas en un archivo aparte (`React.lazy`) | Recharts usa componentes de React y dibuja en SVG, así los colores se toman de las variables CSS del tema. leaflet.heat es el plugin estándar de mapas de calor de Leaflet, que el proyecto ya usa. | Más peso (≈ 114 kB gzip), pero solo para quien visita Métricas. leaflet.heat no se actualiza desde 2015: espera `L` global (`utilidades/leafletGlobal.js`) y escala la intensidad según el zoom (se corrige con `maxZoom`). |
+| D-12 | Normalizar artistas con `translate(lower(trim(...)))` en vez de la extensión `unaccent` | No requiere instalar otra extensión en la base; cubre las vocales acentuadas, la ü y la ñ del español. | No normaliza acentos de otros idiomas (por ejemplo, "è"). Si hiciera falta, se cambiaría a `unaccent` con una migración. |
 
 ## 6. Deuda técnica y evolución sugerida
 
