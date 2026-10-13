@@ -1,6 +1,8 @@
 # Concierto Finder — frontend
 
-SPA en React 18 + Vite + Leaflet. Publicada en https://conciertosfinder.pages.dev/
+SPA en React 18 + Vite con dos páginas: **Conciertos** (`/`, lista y mapa con Leaflet) y
+**Métricas** (`/metricas`, gráficos con Recharts y mapa de calor con leaflet.heat).
+Publicada en https://conciertosfinder.pages.dev/
 
 | Comando          | Qué hace                                |
 | ---------------- | --------------------------------------- |
