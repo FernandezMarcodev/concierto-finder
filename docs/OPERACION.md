@@ -253,3 +253,20 @@ el PR aparece con una cruz roja en la pestaña *Checks*.
 - **Corridas viejas:** un push nuevo a la misma rama cancela la corrida anterior.
 - **Estado:** se ve en el badge del README y en la pestaña *Actions* del repo.
 
+## 11. Seguridad de la base en Supabase
+
+La base de producción está en Supabase. Supabase publica el esquema `public` por su propia API REST
+(la **Data API**, roles `anon` y `authenticated`) usando una clave pública. Esta app **no** la usa:
+el frontend habla solo con la API de Flask.
+
+- La migración `0004_seguridad_rls` habilita **RLS** (seguridad a nivel de fila) en las tablas del
+  proyecto y quita los permisos a `anon` y `authenticated`. Sin políticas, nadie más que el dueño de
+  las tablas (el usuario de `DATABASE_URL`) puede leer ni modificar filas.
+- Si una tabla tiene otro dueño (por ejemplo `spatial_ref_sys`, de PostGIS), la migración no la toca
+  y deja un `NOTICE` en el log del deploy.
+- **Recomendado, en el panel de Supabase:** *Project Settings → Data API* y desactivar la Data API (o
+  sacar `public` de *Exposed schemas*). Como la app no la usa, se cierra la puerta por completo,
+  incluida `spatial_ref_sys`.
+- Para verificar: *Advisors → Security* en el panel de Supabase no debería mostrar
+  `rls_disabled_in_public` para `conciertos`, `ubicaciones` ni `alembic_version`.
+
