@@ -1,0 +1,88 @@
+# Control de calidad: en cada PR y en cada push a main corre los lints, los tests y el build.
+# Si algo falla, el PR aparece en rojo antes de integrarlo. Detalle en docs/OPERACION.md §10.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Un push nuevo a la misma rama cancela la corrida anterior, que ya quedó vieja.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Solo lee el código: no necesita permisos de escritura sobre el repo.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (ruff + pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Base de prueba descartable: la misma imagen y la misma base que docker-compose.test.yml.
+    # El nombre termina en _test porque tests/conftest.py se niega a correr contra otra base.
+    services:
+      db_test:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: concierto_test
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d concierto_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      TEST_DATABASE_URL: postgresql://test:test@localhost:55433/concierto_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12" # la misma que la imagen de producción (Dockerfile)
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff (lint)
+        run: ruff check app migrations tests
+
+      - name: Ruff (formato)
+        run: ruff format --check app migrations tests
+
+      - name: Tests
+        run: pytest -p no:cacheprovider
+
+  frontend:
+    name: Frontend (eslint + prettier + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22" # la misma que web/Dockerfile
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build

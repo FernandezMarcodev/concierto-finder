@@ -237,3 +237,19 @@ pytest
 - Cada test arranca con las tablas vacías (`TRUNCATE` al terminar cada uno).
 - "Hoy" se fija en el 15/10/2026 (fixture `hoy`), así el resultado no depende del día.
 - Antes de commitear: `ruff check app migrations tests && ruff format app migrations tests` y `pytest`.
+
+## 10. Integración continua (GitHub Actions)
+
+El workflow **`.github/workflows/ci.yml`** corre en cada PR y en cada push a `main`. Si algo falla,
+el PR aparece con una cruz roja en la pestaña *Checks*.
+
+| Job | Qué corre |
+|---|---|
+| **Backend (ruff + pytest)** | `ruff check` y `ruff format --check` sobre `app`, `migrations` y `tests`, y `pytest` contra un PostGIS 16-3.4 levantado como *service container* (la misma imagen y la misma base `concierto_test` que `docker-compose.test.yml`). |
+| **Frontend (eslint + prettier + build)** | `npm ci`, `npm run lint`, `npm run format:check` y `npm run build`. |
+
+- **Versiones:** usa las mismas que producción, Python 3.12 y Node 22.
+- **Base de prueba:** no necesita secrets; es descartable y existe solo durante la corrida.
+- **Corridas viejas:** un push nuevo a la misma rama cancela la corrida anterior.
+- **Estado:** se ve en el badge del README y en la pestaña *Actions* del repo.
+
