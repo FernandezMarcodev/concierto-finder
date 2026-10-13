@@ -154,6 +154,10 @@ Para que cada PR se verifique solo, sin depender de que alguien se acuerde de co
 
 **Terminada cuando:** un PR con un error de lint aparece en rojo y no se puede integrar.
 
+**Estado:** hecho como `chore/ci` (`.github/workflows/ci.yml`, ver [OPERACION.md](OPERACION.md) §10).
+Además del lint, corre `pytest` contra un PostGIS. No se activó la regla de GitHub que bloquea
+el merge de un PR en rojo: el check avisa pero no impide integrar.
+
 ### Etapa 1 — Cambios chicos de alto impacto
 
 #### 1. `feat/historial-conciertos`

@@ -313,7 +313,7 @@ sequenceDiagram
 
 ## 6. Deuda técnica y evolución sugerida
 
-- Tests: ya hay tests de repositorios, rutas, tareas, parseo y migraciones contra PostGIS (`tests/`). Faltan el recorrido del scraper con HTML de ejemplo, las utilidades del frontend y correrlos en CI.
+- Tests: ya hay tests de repositorios, rutas, tareas, parseo y migraciones contra PostGIS (`tests/`). Corren en CI (`.github/workflows/ci.yml`). Faltan el recorrido del scraper con HTML de ejemplo y las utilidades del frontend.
 - Ampliar `ubicaciones.nombre` (50 caracteres) y matchear lugares por nombre exacto o normalizado en lugar de `ILIKE %x%`.
 - Correr la ingesta fuera del pedido HTTP (cola o job programado), para no ocupar un hilo de waitress durante minutos.
 - Unificar la ubicación de los límites de AMBA (por ejemplo, exponerlos por la API) para no mantenerlos duplicados.
