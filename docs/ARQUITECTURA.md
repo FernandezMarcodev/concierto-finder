@@ -136,7 +136,9 @@ erDiagram
 - Las búsquedas por distancia castean a `Geography` para medir en metros.
 - El esquema se versiona en `migrations/` (Alembic). `0001_esquema_inicial` es idempotente
   (no recrea tablas existentes); `0002_url_evento_text` amplía `url_evento` a `TEXT`;
-  `0003_historial_conciertos` agrega índices sobre `conciertos.fecha` y `conciertos.ubicacion`.
+  `0003_historial_conciertos` agrega índices sobre `conciertos.fecha` y `conciertos.ubicacion`;
+  `0004_seguridad_rls` habilita RLS en las tablas de `public` y quita los permisos a los roles de la
+  Data API de Supabase (ver D-13).
 - **Historial:** los conciertos pasados se conservan. "Vigente" no se guarda: se calcula en cada
   consulta con `fecha >= hoy OR fecha IS NULL` (ver D-8).
 
@@ -310,6 +312,7 @@ sequenceDiagram
 | D-10 | **Métricas calculadas en SQL** (no en Python ni en el navegador) | Con el historial, la tabla crece sin límite. Agregar en la base trae solo decenas de filas; traer todos los conciertos para contarlos en Python crecería con el historial y ocuparía memoria y el pool. PostGIS además resuelve las distancias y la grilla del mapa de calor. | El SQL es más largo que un bucle en Python; por eso cada consulta está comentada y tiene tests con resultados calculados a mano. |
 | D-11 | **Recharts** para los gráficos y **leaflet.heat** para el mapa de calor, con la página de métricas en un archivo aparte (`React.lazy`) | Recharts usa componentes de React y dibuja en SVG, así los colores se toman de las variables CSS del tema. leaflet.heat es el plugin estándar de mapas de calor de Leaflet, que el proyecto ya usa. | Más peso (≈ 114 kB gzip), pero solo para quien visita Métricas. leaflet.heat no se actualiza desde 2015: espera `L` global (`utilidades/leafletGlobal.js`) y escala la intensidad según el zoom (se corrige con `maxZoom`). |
 | D-12 | Normalizar artistas con `translate(lower(trim(...)))` en vez de la extensión `unaccent` | No requiere instalar otra extensión en la base; cubre las vocales acentuadas, la ü y la ñ del español. | No normaliza acentos de otros idiomas (por ejemplo, "è"). Si hiciera falta, se cambiaría a `unaccent` con una migración. |
+| D-13 | **RLS sin políticas** en las tablas de `public` y sin permisos para `anon` y `authenticated` (migración 0004) | En producción la base está en Supabase, que expone `public` por su propia API REST con una clave pública. La app no usa esa API: todo pasa por Flask. RLS sin políticas cierra esa puerta, y el dueño de las tablas (el usuario de Flask) no queda sujeto a RLS. | Si algún día se usara la Data API de Supabase desde el frontend, habría que escribir políticas explícitas. La migración solo toca tablas cuyo dueño es el usuario que la corre: `spatial_ref_sys` (PostGIS) puede quedar sin RLS; para eso conviene desactivar la Data API en el panel de Supabase. |
 
 ## 6. Deuda técnica y evolución sugerida
 

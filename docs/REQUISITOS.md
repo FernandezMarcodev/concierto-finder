@@ -113,7 +113,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RNF-06 | Robustez | Todo pedido HTTP saliente tiene timeout (15 s scraping/geocodificación, 30 s keep alive). Un evento con error no corta la ingesta. |
 | RNF-07 | Cortesía con terceros | 1 s de pausa entre eventos scrapeados. User-Agent identificable para Nominatim. |
 | RNF-08 | Seguridad | Las credenciales solo se leen del entorno (`DATABASE_URL`, `SCRAPER_TOKEN`), nunca del código. El token se compara en tiempo constante. |
-| RNF-09 | Seguridad | La API pública es de solo lectura; la única escritura (ingesta) requiere token. CORS abierto a cualquier origen. |
+| RNF-09 | Seguridad | La API pública es de solo lectura; la única escritura (ingesta) requiere token. CORS abierto a cualquier origen. Las tablas de la base tienen seguridad a nivel de fila (RLS) y los roles de la API automática de Supabase (`anon`, `authenticated`) no tienen permisos: los datos solo se leen y escriben a través de la API de Flask. |
 | RNF-10 | Mantenibilidad | El esquema de la base se versiona con migraciones de Alembic y se aplica al arrancar el contenedor. |
 | RNF-11 | Usabilidad | Interfaz en español, responsiva, con estados de carga, vacío y error. Fechas en formato `es-AR` y hora local. Sin scroll horizontal desde 320 px de ancho. |
 | RNF-12 | Portabilidad | El stack completo levanta con `docker compose up --build`. |
