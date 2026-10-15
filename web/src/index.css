@@ -30,6 +30,11 @@
 
   /* Barras de los gráficos de métricas. Validado contra --color-surface (luminosidad y contraste ≥ 3:1). */
   --color-grafico: #0a9fdc;
+  /* Un color por tema de gráfico (validados contra --color-surface; ver docs/ARQUITECTURA.md D-14) */
+  --color-serie-finde: #d95926;
+  --color-serie-lugares: #199e70;
+  --color-serie-artistas: #9085e9;
+  --color-serie-anticipacion: #d55181;
 
   /* Error */
   --color-error: #f87171;
@@ -67,6 +72,11 @@
   --color-on-accent: #ffffff;
 
   --color-grafico: #0277bd;
+  --color-serie-finde: #eb6834;
+  /* Aqua y magenta quedan por debajo de 3:1 en el tema claro: sus gráficos muestran los valores y la tabla */
+  --color-serie-lugares: #1baf7a;
+  --color-serie-artistas: #6250d6;
+  --color-serie-anticipacion: #e87ba4;
 
   --color-error: #b91c1c;
   --color-error-light: rgba(185, 28, 28, 0.06);

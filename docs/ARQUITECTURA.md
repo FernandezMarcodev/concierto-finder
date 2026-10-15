@@ -161,7 +161,8 @@ flowchart TD
     App -- "/" --> Inicio[paginas/Inicio.jsx]
     App -- "/metricas (lazy)" --> Metricas[paginas/Metricas.jsx]
     Inicio --> Encabezado & Portada & Filtros & Mapa & TarjetaGrupo & EstadoVacio & EsqueletoLista & PieDePagina
-    Metricas --> Portada & FiltroRango & TarjetaDato & PanelGrafico & GraficoBarras & MapaCalor & Cargando
+    Metricas --> Portada & FiltroRango & TarjetaDato & PanelGrafico & Cargando
+    Metricas --> GraficoBarras & GraficoArea & GrillaDiaHorario & MedidorCalidad & MapaCalor
     Metricas --> servicioM[servicios/metricasServicio.js]
     Inicio --> servicio[servicios/conciertoServicio.js]
     Inicio --> hook[hooks/useDebounce.js]
@@ -210,11 +211,18 @@ flowchart LR
 - `VITE_API_URL` se fija en el build. Si falta, se usa la API de producción.
 
 **Página `Metricas`.** El estado es el filtro (`periodo`, `desde`, `hasta`) y los datos. Cada cambio
-de filtro pide en paralelo los seis endpoints (`Promise.all`). Mientras llegan, los datos anteriores
+de filtro pide en paralelo los diez endpoints (`Promise.all`); "próximos días" e "ingesta" no usan el filtro. Mientras llegan, los datos anteriores
 siguen a la vista, atenuados, y la respuesta de un pedido viejo se descarta.
-- **Gráficos:** `GraficoBarras` (Recharts) dibuja columnas o barras horizontales de una sola serie.
-  Los colores se aplican por CSS con las variables del tema (`--color-grafico`, validado contra la
-  superficie de cada tema), no por props.
+- **Gráficos** (el tipo se elige según lo que muestra cada métrica):
+  - `GraficoBarras` (Recharts): columnas o barras horizontales. Puede destacar algunas barras con un
+    segundo color y leyenda (el fin de semana en "Próximos 14 días").
+  - `GraficoArea` (Recharts): series de tiempo (por mes, conciertos nuevos por día).
+  - `GrillaDiaHorario`: grilla de calor en CSS Grid. El fondo de cada celda es un `color-mix` del color
+    de los gráficos con la superficie, y el color del número se elige por **contraste WCAG**
+    (`utilidades/contraste.js`) con los colores reales del tema.
+  - `MedidorCalidad`: medidores de completitud (proporción de un total).
+
+  Los colores se aplican por CSS con variables del tema, no por props (ver D-14).
 - **Mapa de calor:** `MapaCalor` reutiliza el contenedor, los tiles y el filtro oscuro de `Mapa`,
   y crea la capa de `leaflet.heat` con `useMap`. Usa una escala de un solo tono que cambia con el
   tema (lo detecta `useTemaActual`, que observa `data-tema`).
@@ -316,6 +324,7 @@ sequenceDiagram
 | D-11 | **Recharts** para los gráficos y **leaflet.heat** para el mapa de calor, con la página de métricas en un archivo aparte (`React.lazy`) | Recharts usa componentes de React y dibuja en SVG, así los colores se toman de las variables CSS del tema. leaflet.heat es el plugin estándar de mapas de calor de Leaflet, que el proyecto ya usa. | Más peso (≈ 114 kB gzip), pero solo para quien visita Métricas. leaflet.heat no se actualiza desde 2015: espera `L` global (`utilidades/leafletGlobal.js`) y escala la intensidad según el zoom (se corrige con `maxZoom`). |
 | D-12 | Normalizar artistas con `translate(lower(trim(...)))` en vez de la extensión `unaccent` | No requiere instalar otra extensión en la base; cubre las vocales acentuadas, la ü y la ñ del español. | No normaliza acentos de otros idiomas (por ejemplo, "è"). Si hiciera falta, se cambiaría a `unaccent` con una migración. |
 | D-13 | **RLS sin políticas** en las tablas de `public` y sin permisos para `anon` y `authenticated` (migración 0004) | En producción la base está en Supabase, que expone `public` por su propia API REST con una clave pública. La app no usa esa API: todo pasa por Flask. RLS sin políticas cierra esa puerta, y el dueño de las tablas (el usuario de Flask) no queda sujeto a RLS. | Si algún día se usara la Data API de Supabase desde el frontend, habría que escribir políticas explícitas. La migración solo toca tablas cuyo dueño es el usuario que la corre: `spatial_ref_sys` (PostGIS) puede quedar sin RLS; para eso conviene desactivar la Data API en el panel de Supabase. |
+| D-14 | **Un color con significado por gráfico**, validado con un script de contraste y daltonismo contra la superficie de cada tema: azul para series de tiempo, naranja para el fin de semana, aqua para lugares, violeta para artistas, magenta para anticipación, azul secuencial para intensidad | Variar colores sin criterio es decoración y confunde (¿dos gráficos del mismo color miden lo mismo?). Un color por entidad se lee de un vistazo. | Aqua y magenta quedan por debajo de 3:1 en el tema claro: sus gráficos muestran los valores sobre las barras y la tabla de datos, como pide la regla de "alivio". |
 
 ## 6. Deuda técnica y evolución sugerida
 

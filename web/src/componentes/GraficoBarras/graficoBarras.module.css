@@ -6,9 +6,36 @@
   font-size: var(--text-xs);
 }
 
-/* Barras: un solo color (una sola serie, no hace falta leyenda) */
+/* Barras: el color de la serie (--color-serie lo define el componente según el prop "color") */
 .grafico :global(.recharts-bar-rectangle path) {
-  fill: var(--color-grafico);
+  fill: var(--color-serie, var(--color-grafico));
+}
+
+/* Barras destacadas con el segundo color (por ejemplo, el fin de semana) */
+.grafico :global(.recharts-bar-rectangle) path.destacada {
+  fill: var(--color-serie-finde);
+}
+
+/* ====== LEYENDA ====== */
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.leyendaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leyendaMuestra {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
 }
 
 /* Texto de ejes y valores: colores de texto, nunca el color de la serie */

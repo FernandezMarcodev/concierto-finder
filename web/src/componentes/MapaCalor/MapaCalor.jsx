@@ -31,6 +31,8 @@ const degradeCss = (gradiente) =>
     .join(", ")})`;
 
 const ZOOM_CALOR = 10;
+// Un poco al oeste del Obelisco: a todo el ancho, centrado en el Obelisco se veía sobre todo el río
+const CENTRO_CALOR = [CENTRO_BSAS[0], CENTRO_BSAS[1] - 0.12];
 
 // Capa de calor de leaflet.heat. react-leaflet no la trae: se crea a mano con el mapa de useMap.
 function CapaCalor({ puntos, tema }) {
@@ -76,7 +78,7 @@ function MapaCalor({ puntos }) {
     <>
       <div className={`${estilosMapa.contenedorMapa} ${styles.contenedor}`}>
         <MapContainer
-          center={CENTRO_BSAS}
+          center={CENTRO_CALOR}
           zoom={ZOOM_CALOR}
           zoomControl={false}
           maxBounds={ARG_MAX_BOUNDS}

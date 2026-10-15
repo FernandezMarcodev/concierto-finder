@@ -58,3 +58,28 @@
     gap: var(--space-2);
   }
 }
+
+/* Título de sección (por ejemplo, "Calidad de los datos") */
+.seccion {
+  margin: var(--space-8) 0 var(--space-1);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.seccionDescripcion {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Métricas que todavía no tienen datos (se miden desde la migración 0005) */
+.sinDatos {
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}

@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   LabelList,
   ReferenceArea,
   ResponsiveContainer,
@@ -38,13 +39,30 @@ function ContenidoTooltip({ active, payload, label, formatearDetalle }) {
   );
 }
 
+// Leyenda (solo cuando hay dos colores en el mismo gráfico): muestra de color + texto
+function Leyenda({ items }) {
+  return (
+    <div className={styles.leyenda}>
+      {items.map((item) => (
+        <span key={item.texto} className={styles.leyendaItem}>
+          <span className={styles.leyendaMuestra} style={{ background: `var(${item.color})` }} />
+          {item.texto}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Gráfico de barras de una sola serie (cantidad de conciertos).
  * - horizontal=false: columnas, para categorías ordenadas (meses, rangos de distancia).
  * - horizontal=true: barras, para rankings con nombres largos (lugares, artistas).
  * - numerar: antepone la posición ("1. ", "2. "...) a cada nombre del ranking.
  * - marca: { categoria, texto } resalta una categoría con una franja de fondo (por ejemplo, el mes actual).
- * Los colores no se pasan como props: los pone el CSS con las variables del tema claro/oscuro.
+ * - color: nombre de la variable CSS de la serie (por ejemplo "--color-serie-lugares"). El valor real
+ *   lo pone el tema claro u oscuro en index.css.
+ * - destacar(fila) + leyenda: pinta algunas barras con un segundo color (por ejemplo, el fin de
+ *   semana) y muestra la leyenda, porque con dos colores el color solo no alcanza para entender.
  */
 function GraficoBarras({
   datos,
@@ -56,11 +74,14 @@ function GraficoBarras({
   marca = null,
   formatearEje = (valor) => valor,
   formatearDetalle = (valor) => valor,
+  color = "--color-grafico",
+  destacar = null,
+  leyenda = null,
 }) {
   const eje = ejeNombres();
   const alto = horizontal ? datos.length * ALTO_POR_BARRA + 32 : ALTO_COLUMNAS;
-  // Lugar arriba para el texto de la marca
-  const margenSuperior = marca ? 24 : 8;
+  // Lugar arriba para el texto de la marca o para el valor de la columna más alta
+  const margenSuperior = marca || (mostrarValores && !horizontal) ? 24 : 8;
 
   // Eje de categorías y eje de valores, según la orientación
   const ejeCategorias = {
@@ -77,50 +98,60 @@ function GraficoBarras({
   const ejeValores = { type: "number", allowDecimals: false, axisLine: false, tickLine: false };
 
   return (
-    <div className={styles.grafico} style={{ height: alto }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={datos}
-          layout={horizontal ? "vertical" : "horizontal"}
-          margin={{ top: margenSuperior, right: mostrarValores ? 32 : 8, bottom: 0, left: 0 }}
-        >
-          {/* Solo las líneas de referencia del eje de valores: grilla tenue y sin cortes */}
-          <CartesianGrid horizontal={!horizontal} vertical={horizontal} />
-          {horizontal ? (
-            <>
-              <XAxis {...ejeValores} hide={mostrarValores} />
-              <YAxis {...ejeCategorias} width={eje.ancho} />
-            </>
-          ) : (
-            <>
-              <XAxis {...ejeCategorias} />
-              <YAxis {...ejeValores} width={32} />
-            </>
-          )}
-          {marca && datos.some((fila) => fila[claveCategoria] === marca.categoria) && (
-            <ReferenceArea
-              x1={marca.categoria}
-              x2={marca.categoria}
-              // El texto va arriba del gráfico (en el margen superior) para que la barra no lo tape
-              label={{ value: marca.texto, position: "top" }}
-            />
-          )}
-          <Tooltip
-            cursor={{ className: styles.cursor }}
-            content={(props) => <ContenidoTooltip {...props} formatearDetalle={formatearDetalle} />}
-          />
-          <Bar
-            dataKey={claveValor}
-            maxBarSize={24}
-            // Extremo de la barra redondeado (4 px) y la base recta, apoyada en el eje
-            radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
-            isAnimationActive={false}
+    <>
+      {leyenda && <Leyenda items={leyenda} />}
+      <div className={styles.grafico} style={{ height: alto, "--color-serie": `var(${color})` }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={datos}
+            layout={horizontal ? "vertical" : "horizontal"}
+            margin={{ top: margenSuperior, right: mostrarValores ? 32 : 8, bottom: 0, left: 0 }}
           >
-            {mostrarValores && <LabelList dataKey={claveValor} position={horizontal ? "right" : "top"} />}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+            {/* Solo las líneas de referencia del eje de valores: grilla tenue y sin cortes */}
+            <CartesianGrid horizontal={!horizontal} vertical={horizontal} />
+            {horizontal ? (
+              <>
+                <XAxis {...ejeValores} hide={mostrarValores} />
+                <YAxis {...ejeCategorias} width={eje.ancho} />
+              </>
+            ) : (
+              <>
+                <XAxis {...ejeCategorias} />
+                <YAxis {...ejeValores} width={32} />
+              </>
+            )}
+            {marca && datos.some((fila) => fila[claveCategoria] === marca.categoria) && (
+              <ReferenceArea
+                x1={marca.categoria}
+                x2={marca.categoria}
+                // El texto va arriba del gráfico (en el margen superior) para que la barra no lo tape
+                label={{ value: marca.texto, position: "top" }}
+              />
+            )}
+            <Tooltip
+              cursor={{ className: styles.cursor }}
+              content={(props) => <ContenidoTooltip {...props} formatearDetalle={formatearDetalle} />}
+            />
+            <Bar
+              dataKey={claveValor}
+              maxBarSize={24}
+              // Extremo de la barra redondeado (4 px) y la base recta, apoyada en el eje
+              radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
+              isAnimationActive={false}
+            >
+              {destacar &&
+                datos.map((fila) => (
+                  <Cell
+                    key={fila[claveCategoria]}
+                    className={destacar(fila) ? styles.destacada : undefined}
+                  />
+                ))}
+              {mostrarValores && <LabelList dataKey={claveValor} position={horizontal ? "right" : "top"} />}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </>
   );
 }
 

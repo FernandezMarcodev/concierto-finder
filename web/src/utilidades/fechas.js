@@ -62,3 +62,21 @@ export function etiquetaCercania(fecha, hoy = new Date()) {
   if (dias === 1) return "Mañana";
   return null;
 }
+
+// "2026-10-16" -> "vie 16" (eje de los próximos días)
+export function diaCorto(fecha) {
+  const partes = partesFecha(fecha);
+  return partes ? `${partes.diaSemana} ${partes.dia}` : "";
+}
+
+// "2026-10-16" -> "viernes 16 de octubre" (tooltip y tabla)
+export function diaLargo(fecha) {
+  const valor = fechaLocal(fecha);
+  return valor ? valor.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }) : "";
+}
+
+// Sábado o domingo
+export function esFinDeSemana(fecha) {
+  const valor = fechaLocal(fecha);
+  return valor ? [0, 6].includes(valor.getDay()) : false;
+}
