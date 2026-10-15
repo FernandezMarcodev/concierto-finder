@@ -15,7 +15,7 @@ Aplicación web de dos piezas, más una base geoespacial:
 - **API REST** (Flask 3 + SQLAlchemy 2.0 + GeoAlchemy2, servida con waitress), de solo lectura
   para el público, con endpoints de métricas calculadas en SQL/PostGIS, un endpoint protegido de
   ingesta (scraping) y tareas en segundo plano.
-- **PostgreSQL 16 + PostGIS 3.4** con dos tablas.
+- **PostgreSQL 16 + PostGIS 3.4** con dos tablas (en producción, en Supabase).
 
 ### 1.1 Contexto (C4 nivel 1)
 
@@ -51,7 +51,7 @@ flowchart LR
         flask[API Flask<br/>app/]
         hilos[Hilos daemon<br/>keep alive · limpieza 24 h]
     end
-    db[(PostgreSQL + PostGIS<br/>:5432 · host :55432)]
+    db[(PostgreSQL + PostGIS<br/>prod: Supabase · local :55432)]
 
     estaticos -- "HTML/JS/CSS" --> spa
     spa -- "GET /conciertos (JSON)" --> flask
@@ -65,7 +65,7 @@ flowchart LR
 |---|---|---|---|
 | web | React 18, Vite 7, react-router 7, react-leaflet 4, Recharts 3, leaflet.heat, nginx | Cloudflare Pages (`conciertosfinder.pages.dev`) | servicio `web` en :5173 |
 | app | Python 3.12, Flask 3, SQLAlchemy 2.0, GeoAlchemy2, waitress | Render (`concierto-finder.onrender.com`) | servicio `app` en :8000 |
-| db | PostgreSQL 16 + PostGIS 3.4 | — | servicio `db`, volumen `pgdata`, host :55432 |
+| db | PostgreSQL 16 + PostGIS 3.4 | Supabase (RLS activo, ver D-13) | servicio `db`, volumen `pgdata`, host :55432 |
 
 ## 2. Backend (`app/`)
 
@@ -104,9 +104,9 @@ flowchart TD
 | `services/geocoding_service.py` | Nominatim y la regla de región AMBA (fuente de verdad de los límites). |
 | `services/tareas.py` | Hilos `mantener_despierta` (keep alive dentro de una franja horaria, o mientras corre una ingesta), `programar_limpieza_diaria` e `ingesta_inicial` (solo si la base está vacía). |
 | `services/http.py` | `requests.Session` compartida y timeout por defecto. |
-| `services/metricas_service.py` | Lee y valida los parámetros de las métricas (fechas, límite, celda, punto, rangos), aplica los valores por defecto y llama al repositorio. |
-| `repositories/metricas_repository.py` | Las seis consultas de métricas en SQL: `GROUP BY`, `generate_series`, `mode()`, `ST_SnapToGrid`, `ST_Distance` sobre `Geography`. Todas comparten el filtro de fechas con parámetros enlazados. |
-| `services/datos_ficticios.py` | Generador determinístico de conciertos ficticios (con estacionalidad) para desarrollo. |
+| `services/metricas_service.py` | Lee y valida los parámetros de las métricas (fechas, límite, celda, punto, rangos, días), aplica los valores por defecto y llama al repositorio. |
+| `repositories/metricas_repository.py` | Las once consultas de métricas en SQL: `GROUP BY`, `generate_series`, `mode()`, `percentile_cont`, `ST_SnapToGrid`, `ST_Distance` sobre `Geography`. Comparten el filtro de fechas con parámetros enlazados; `creado_en` se convierte a fecha argentina con `AT TIME ZONE`. |
+| `services/datos_ficticios.py` | Generador determinístico de conciertos ficticios (con estacionalidad y `creado_en`) para desarrollo. |
 | `services/fechas.py` | `hoy_argentina()` / `ahora_argentina()`: la fecha y la hora en `America/Argentina/Buenos_Aires` (el servidor corre en UTC). |
 
 ### 2.2 Modelo de datos
@@ -166,7 +166,9 @@ flowchart TD
     Metricas --> servicioM[servicios/metricasServicio.js]
     Inicio --> servicio[servicios/conciertoServicio.js]
     Inicio --> hook[hooks/useDebounce.js]
-    Inicio --> util[utilidades/<br/>filtros · grupos · geo · texto]
+    Inicio --> util[utilidades/<br/>filtros · grupos · geo · texto · fechas]
+    Metricas --> utilM[utilidades/<br/>fechas · periodos · contraste · leafletGlobal]
+    Metricas --> hooksM[hooks/<br/>useTemaActual · useDemorado]
     Mapa --> util
     Filtros --> util
     TarjetaGrupo --> util
@@ -195,7 +197,8 @@ flowchart LR
 
 - El estado se reduce a lo mínimo (`conciertosBase`, `filtros`, `seleccion`, `cargando`, `error`);
   la lista filtrada y los grupos se **derivan**, no se guardan.
-- `Mapa` recibe los grupos ya calculados, usa un único `divIcon` y abre los popups mediante
+- `Mapa` recibe los grupos ya calculados, usa un `divIcon` por cantidad de conciertos (guardado
+  en caché: el número del marcador) y abre los popups mediante
   refs de `Marker`. Cada clic en "Ver en mapa" crea un objeto `seleccion` nuevo, así vuelve a
   enfocar aunque sea el mismo concierto.
 - Estilos: CSS Modules co-ubicados (`<nombre>.module.css`) y variables globales en `index.css`.
@@ -292,7 +295,7 @@ sequenceDiagram
     participant S as metricas_service
     participant R as metricas_repository
     participant D as PostGIS
-    N->>A: GET /api/metricas/... ?desde=&hasta= (6 pedidos en paralelo)
+    N->>A: GET /api/metricas/... ?desde=&hasta= (10 pedidos en paralelo)
     A->>S: leer_filtro(request.args), leer_limite(...)
     alt parámetro inválido
         S-->>A: ParametroInvalido
@@ -321,7 +324,7 @@ sequenceDiagram
 | D-8 | Historial con **vigencia derivada de la fecha** (en lugar de una tabla de archivados o una columna `estado`) | La regla de vigencia (RN-02) ya depende solo de la fecha: guardarla aparte duplicaría el dato y obligaría a un job que la mantenga al día. Una tabla de archivados duplicaría el esquema y haría que cada métrica necesite un `UNION`. | Todas las consultas públicas deben filtrar por fecha (está centralizado en `_consulta_vigentes`). La tabla crece sin límite: por eso los índices de la `0003`. |
 | D-9 | Tests contra **PostGIS real** (contenedor descartable) en lugar de SQLite o mocks | Las consultas usan PostGIS (`ST_DWithin`, `Geography`) e `IS NOT DISTINCT FROM`: SQLite no las tiene, y un mock no prueba el SQL. El esquema se crea con las migraciones, así también quedan probadas. | Los tests necesitan Docker (o un PostgreSQL con PostGIS). Son algo más lentos que en memoria (≈ 2 s para toda la suite). |
 | D-10 | **Métricas calculadas en SQL** (no en Python ni en el navegador) | Con el historial, la tabla crece sin límite. Agregar en la base trae solo decenas de filas; traer todos los conciertos para contarlos en Python crecería con el historial y ocuparía memoria y el pool. PostGIS además resuelve las distancias y la grilla del mapa de calor. | El SQL es más largo que un bucle en Python; por eso cada consulta está comentada y tiene tests con resultados calculados a mano. |
-| D-11 | **Recharts** para los gráficos y **leaflet.heat** para el mapa de calor, con la página de métricas en un archivo aparte (`React.lazy`) | Recharts usa componentes de React y dibuja en SVG, así los colores se toman de las variables CSS del tema. leaflet.heat es el plugin estándar de mapas de calor de Leaflet, que el proyecto ya usa. | Más peso (≈ 114 kB gzip), pero solo para quien visita Métricas. leaflet.heat no se actualiza desde 2015: espera `L` global (`utilidades/leafletGlobal.js`) y escala la intensidad según el zoom (se corrige con `maxZoom`). |
+| D-11 | **Recharts** para los gráficos y **leaflet.heat** para el mapa de calor, con la página de métricas en un archivo aparte (`React.lazy`) | Recharts usa componentes de React y dibuja en SVG, así los colores se toman de las variables CSS del tema. leaflet.heat es el plugin estándar de mapas de calor de Leaflet, que el proyecto ya usa. | Más peso (≈ 124 kB gzip), pero solo para quien visita Métricas. leaflet.heat no se actualiza desde 2015: espera `L` global (`utilidades/leafletGlobal.js`) y escala la intensidad según el zoom (se corrige con `maxZoom`). |
 | D-12 | Normalizar artistas con `translate(lower(trim(...)))` en vez de la extensión `unaccent` | No requiere instalar otra extensión en la base; cubre las vocales acentuadas, la ü y la ñ del español. | No normaliza acentos de otros idiomas (por ejemplo, "è"). Si hiciera falta, se cambiaría a `unaccent` con una migración. |
 | D-13 | **RLS sin políticas** en las tablas de `public` y sin permisos para `anon` y `authenticated` (migración 0004) | En producción la base está en Supabase, que expone `public` por su propia API REST con una clave pública. La app no usa esa API: todo pasa por Flask. RLS sin políticas cierra esa puerta, y el dueño de las tablas (el usuario de Flask) no queda sujeto a RLS. | Si algún día se usara la Data API de Supabase desde el frontend, habría que escribir políticas explícitas. La migración solo toca tablas cuyo dueño es el usuario que la corre: `spatial_ref_sys` (PostGIS) puede quedar sin RLS; para eso conviene desactivar la Data API en el panel de Supabase. |
 | D-14 | **Un color con significado por gráfico**, validado con un script de contraste y daltonismo contra la superficie de cada tema: azul para series de tiempo, naranja para el fin de semana, aqua para lugares, violeta para artistas, magenta para anticipación, azul secuencial para intensidad | Variar colores sin criterio es decoración y confunde (¿dos gráficos del mismo color miden lo mismo?). Un color por entidad se lee de un vistazo. | Aqua y magenta quedan por debajo de 3:1 en el tema claro: sus gráficos muestran los valores sobre las barras y la tabla de datos, como pide la regla de "alivio". |
@@ -332,3 +335,9 @@ sequenceDiagram
 - Ampliar `ubicaciones.nombre` (50 caracteres) y matchear lugares por nombre exacto o normalizado en lugar de `ILIKE %x%`.
 - Correr la ingesta fuera del pedido HTTP (cola o job programado), para no ocupar un hilo de waitress durante minutos.
 - Unificar la ubicación de los límites de AMBA (por ejemplo, exponerlos por la API) para no mantenerlos duplicados.
+- Registrar cuándo la ingesta vio cada concierto por última vez (`visto_en`), para distinguir los
+  cancelados o reprogramados en el historial.
+- `GET /api/metricas/distancias` ya no lo usa la página: decidir si se mantiene como parte de la
+  API pública o se elimina.
+- La página de métricas hace diez pedidos en paralelo: con el pool chico (3 + 2) y la API dormida,
+  podría convenir un endpoint que devuelva todo junto.

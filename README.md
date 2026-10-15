@@ -6,8 +6,9 @@ Cartelera de próximos conciertos en Buenos Aires y alrededores (AMBA), con una 
 sobre el historial de conciertos.
 
 - **Conciertos:** lista y mapa, filtros por artista y por cercanía, enlaces a las entradas y a cómo llegar.
-- **Métricas:** conciertos por mes, lugares y artistas que más se repiten, distancia al Obelisco y
-  mapa de calor, con filtro por período.
+- **Métricas:** próximos 14 días, días y horarios con más conciertos, anticipación de los anuncios,
+  conciertos por mes, lugares y artistas que más se repiten, mapa de calor y calidad de los datos,
+  con filtro por período.
 
 API en Flask + SQLAlchemy + PostGIS y frontend en React + Vite + Leaflet.
 
@@ -72,7 +73,7 @@ ConciertosFinder/
 │       ├── componentes/        # <Nombre>/<Nombre>.jsx + <nombre>.module.css
 │       ├── hooks/              # useDebounce, useTema, useTemaActual, useDemorado
 │       ├── servicios/          # Clientes de la API (conciertos y métricas)
-│       ├── utilidades/         # filtros, grupos, geo, texto, fechas, períodos
+│       ├── utilidades/         # filtros, grupos, geo, texto, fechas, períodos, contraste
 │       └── constantes.js
 ├── .github/workflows/          # ci.yml (lints, tests y build) e ingesta.yml (ingesta cada 12 h)
 ├── Dockerfile                  # Imagen de la API (aplica migraciones al iniciar)
@@ -138,5 +139,11 @@ Los tests no necesitan `.env` y no tocan la base de desarrollo. El workflow
 | GET | `/api/metricas/artistas` | Ranking de artistas |
 | GET | `/api/metricas/densidad` | Puntos para el mapa de calor |
 | GET | `/api/metricas/distancias` | Conciertos por rango de distancia a un punto |
+| GET | `/api/metricas/dia_horario` | Conciertos por día de la semana y franja horaria |
+| GET | `/api/metricas/proximos_dias` | Conciertos de cada uno de los próximos días |
+| GET | `/api/metricas/calidad` | Datos faltantes (fecha, hora, entradas, lugar) |
+| GET | `/api/metricas/ingesta` | Conciertos nuevos por día de ingesta |
+| GET | `/api/metricas/anticipacion` | Anticipación de los anuncios (rangos y mediana) |
 
-Todos los de métricas aceptan `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD`. Detalle en [API.md](docs/API.md).
+Los de métricas aceptan `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD`, salvo `proximos_dias` e `ingesta`
+(`?dias=`). Detalle en [API.md](docs/API.md).

@@ -83,8 +83,15 @@ El esquema se versiona con Alembic (Flask-Migrate) en `migrations/`.
 | Revertir la última | `flask --app app db downgrade` |
 
 **Bases creadas antes de las migraciones** (con `db.create_all()`): no hace falta hacer nada.
-`0001_esquema_inicial` detecta las tablas existentes y no las toca, `0002` amplía `url_evento` y
-`0003` agrega índices para el historial.
+`0001_esquema_inicial` detecta las tablas existentes y no las toca. Las siguientes:
+
+| Migración | Qué hace |
+|---|---|
+| `0002_url_evento_text` | Amplía `url_evento` a `TEXT`. |
+| `0003_historial_conciertos` | Índices sobre `conciertos.fecha` y `conciertos.ubicacion` (historial). |
+| `0004_seguridad_rls` | RLS y sin permisos para los roles de la Data API de Supabase (§11). |
+| `0005_creado_en` | Columna `conciertos.creado_en`; las filas anteriores quedan en `null`. |
+
 Basta con correr `upgrade`.
 
 ## 4. Despliegue en producción
@@ -93,13 +100,14 @@ Basta con correr `upgrade`.
 |---|---|---|
 | API | Render (https://concierto-finder.onrender.com) | Con el `Dockerfile` raíz, las migraciones corren al iniciar. Si el servicio usa un comando de arranque propio, debe ejecutar `flask --app app db upgrade` antes de levantar la app. Configurar `DATABASE_URL`, `SCRAPER_TOKEN` y, opcionalmente, `KEEP_ALIVE_URL` (§5). |
 | Frontend | Cloudflare Pages (https://conciertosfinder.pages.dev) | Build `npm run build` en `web/` y salida `dist/`. Definir `VITE_API_URL` si la API no es la de por defecto. |
-| Base | PostgreSQL con PostGIS | La migración inicial ejecuta `CREATE EXTENSION IF NOT EXISTS postgis` (requiere permisos). |
+| Base | Supabase (PostgreSQL con PostGIS) | La migración inicial ejecuta `CREATE EXTENSION IF NOT EXISTS postgis` (requiere permisos). Seguridad de la Data API en §11. |
 
 ### Checklist de un despliegue
 
 1. Definir `SCRAPER_TOKEN` en Render **antes** de desplegar: sin él, la ingesta queda deshabilitada.
 2. Crear el secret `SCRAPER_TOKEN` en GitHub con el mismo valor que en Render (§5), para el workflow de ingesta.
-3. Desplegar la API y verificar en los logs `Running upgrade ... -> 0003_historial_conciertos`.
+3. Desplegar la API y verificar en los logs que se aplicó la última migración
+   (`Running upgrade ... -> 0005_creado_en`).
 4. Verificar `GET /` (200) y `GET /conciertos`.
 5. Desplegar el frontend.
 
@@ -200,6 +208,7 @@ despierta la instancia, la limpieza corre al menos una vez por día.
 | La ingesta lee eventos pero no guarda ninguno | Cambió el HTML de agendade o Nominatim no responde | Revisar los logs (`app.services.scraper_service`) con `LOG_LEVEL=DEBUG`. |
 | El frontend local muestra datos de producción | Falta `VITE_API_URL` | Crear `web/.env.local`. |
 | `flask db upgrade` falla con `permission denied to create extension` | El usuario no puede crear PostGIS | Crear la extensión como superusuario una vez. |
+| Se mergeó un PR pero producción no cambia, y el CI no corrió en `main` | GitHub no avisó del push (Render despliega con ese aviso) | Esperar unos minutos; si sigue igual, en Render: *Manual Deploy → Deploy latest commit*. |
 
 ## 9. Tests
 

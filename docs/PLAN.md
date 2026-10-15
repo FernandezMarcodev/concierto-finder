@@ -15,7 +15,8 @@ y [OPERACION.md](OPERACION.md).
 3. **Las ramas nacen de `main` actualizado** y viven poco (idealmente días, no semanas).
 4. **Antes de abrir el PR**, actualizá tu rama con lo último de `main` y corré los lints.
 5. **Se integra con "Squash and merge"**: todos los commits de la rama quedan como uno solo en
-   `main`, con el título del PR como mensaje. La rama se borra después del merge.
+   `main`, con el título del PR como mensaje. **La rama no se borra** después del merge: queda en
+   GitHub como registro del trabajo.
 
 ### Nombres de rama
 
@@ -56,7 +57,7 @@ git push -u origin feat/filtro-fecha
 gh pr create --fill --base main
 
 # 5. Cuando el PR está aprobado y los checks en verde
-gh pr merge --squash --delete-branch
+gh pr merge --squash          # sin --delete-branch: la rama queda
 git switch main && git pull
 ```
 
@@ -93,6 +94,30 @@ Pages no despliegan exactamente al mismo tiempo.
 
 ## 2. Mapa de ramas
 
+### Estado (octubre 2026)
+
+Integrado en `main`, un PR por rama (todas siguen en GitHub):
+
+| PR | Rama | Qué hizo | Migración |
+|---|---|---|---|
+| #1, #2 | `chore/verificacion-search-console`, `fix/verificacion-search-console` | Verificación de Google Search Console | — |
+| #3 | `chore/versionar-claude-md` | `CLAUDE.md` versionado | — |
+| #4 | `feat/historial-conciertos` | Los conciertos pasados se conservan; vigencia derivada de la fecha | 0003 |
+| #5 | `chore/tests-pytest` | Tests contra PostGIS y datos ficticios (`flask sembrar`) | — |
+| #6 | `feat/metricas-api` | API de métricas en SQL/PostGIS | — |
+| #7 | `feat/metricas-ui` | Página `/metricas` | — |
+| #8 | `feat/ui-pulido` | Pulido visual de las dos páginas | — |
+| #9 | `fix/responsive-movil` | El mapa y la lista entran en el teléfono | — |
+| #10 | `chore/ci` | CI con GitHub Actions (rama 0 del plan) | — |
+| #11 | `docs/readme-actualizado` | README con estructura, métricas, tests y badge | — |
+| #12 | `fix/seguridad-rls` | RLS y sin permisos para la Data API de Supabase | 0004 |
+| #13 | `feat/metricas-nuevas-api` | Concentración, día y horario, próximos días, calidad, ingesta y anticipación | 0005 |
+| #14 | `feat/metricas-nuevas-ui` | Página de métricas con los gráficos nuevos | — |
+
+La próxima migración libre es la **0006**.
+
+### Hoja de ruta
+
 ```mermaid
 flowchart LR
     ci[chore/ci-calidad] --> hist[feat/historial-conciertos]
@@ -101,7 +126,6 @@ flowchart LR
     fecha --> url[feat/filtros-en-url]
     ci --> busq[feat/registro-busquedas]
     hist --> tests[chore/tests-pytest] --> api[feat/metricas-api] --> est[feat/metricas-ui]
-    api -.-> zonas[feat/metricas-zonas]
     ci --> tg[feat/telegram-semanal]
     est -.-> spike[spike/auth-proveedor]
     spike --> login[feat/auth-login]
@@ -112,23 +136,23 @@ flowchart LR
 Las ramas sin flecha entre sí son **independientes** y se pueden hacer en paralelo (por ejemplo,
 `feat/filtro-fecha` y `feat/agregar-calendario`).
 
-| # | Rama | Etapa | Toca | Migración | Tamaño | Depende de |
-|---|---|---|---|---|---|---|
-| 0 | `chore/ci-calidad` | 0 | CI | — | S | — |
-| 1 | `feat/historial-conciertos` | 1 | Backend | 0003 | S | 0 |
-| 2 | `feat/filtro-fecha` | 1 | Frontend | — | S | 0 |
-| 3 | `feat/agregar-calendario` | 1 | Frontend | — | S | 0 |
-| 4 | `feat/filtros-en-url` | 1 | Frontend | — | S | 2 |
-| 5 | `feat/registro-busquedas` | 2 | Backend + frontend | 0004 | M | 0 |
-| 6a | `chore/tests-pytest` | 2 | Backend (tests) + datos ficticios | — | M | 1 |
-| 6b | `feat/metricas-api` | 2 | Backend | — | M | 6a |
-| 6c | `feat/metricas-ui` | 2 | Frontend | — | M | 6b |
-| 6d | `feat/metricas-zonas` (opcional) | 2 | Backend + frontend | 0004 | M | 6b |
-| 7 | `feat/telegram-semanal` | 2 | CI | — | S | 0 |
-| 8 | `spike/auth-proveedor` | 3 | Investigación | — | S | — |
-| 9 | `feat/auth-login` | 3 | Backend + frontend | 0005 | L | 8 |
-| 10 | `feat/seguir-artistas` | 3 | Backend + frontend | 0006 | M | 9 |
-| 11 | `feat/avisos-artistas` | 3 | Backend + CI | — | M | 10 |
+| # | Rama | Etapa | Toca | Migración | Tamaño | Depende de | Estado |
+|---|---|---|---|---|---|---|---|
+| 0 | `chore/ci-calidad` | 0 | CI | — | S | — | Hecha (#10, como `chore/ci`) |
+| 1 | `feat/historial-conciertos` | 1 | Backend | 0003 | S | 0 | Hecha (#4) |
+| 2 | `feat/filtro-fecha` | 1 | Frontend | — | S | 0 | Pendiente |
+| 3 | `feat/agregar-calendario` | 1 | Frontend | — | S | 0 | Pendiente |
+| 4 | `feat/filtros-en-url` | 1 | Frontend | — | S | 2 | Pendiente |
+| 5 | `feat/registro-busquedas` | 2 | Backend + frontend | 0006 | M | 0 | Pendiente |
+| 6a | `chore/tests-pytest` | 2 | Backend (tests) + datos ficticios | — | M | 1 | Hecha (#5) |
+| 6b | `feat/metricas-api` | 2 | Backend | — | M | 6a | Hecha (#6; ampliada en #13) |
+| 6c | `feat/metricas-ui` | 2 | Frontend | — | M | 6b | Hecha (#7; ampliada en #14) |
+| 6d | `feat/metricas-zonas` (opcional) | 2 | Backend + frontend | — | M | 6b | Descartada |
+| 7 | `feat/telegram-semanal` | 2 | CI | — | S | 0 | Pendiente |
+| 8 | `spike/auth-proveedor` | 3 | Investigación | — | S | — | Pendiente |
+| 9 | `feat/auth-login` | 3 | Backend + frontend | 0007 | L | 8 | Pendiente |
+| 10 | `feat/seguir-artistas` | 3 | Backend + frontend | 0008 | M | 9 | Pendiente |
+| 11 | `feat/avisos-artistas` | 3 | Backend + CI | — | M | 10 | Pendiente |
 
 Tamaño: **S** = un par de archivos, **M** = varias partes coordinadas, **L** = feature grande,
 conviene partirla.
@@ -217,7 +241,7 @@ Para compartir una búsqueda, por ejemplo por WhatsApp: `?artista=paez&cuando=fi
 
 Saber qué artistas busca la gente, en especial **los que no tienen fecha**.
 
-- Migración `0004`: tabla `busquedas` (`id`, `texto` normalizado, `cantidad_resultados`,
+- Migración `0006`: tabla `busquedas` (`id`, `texto` normalizado, `cantidad_resultados`,
   `fecha_hora`). **Sin IP ni datos personales.**
 - `POST /busquedas`: guarda una búsqueda. Valida el largo del texto e ignora los textos de menos
   de 3 letras.
@@ -237,15 +261,16 @@ de "artistas más buscados sin resultados" queda para cuando exista esa rama.
 - **`chore/tests-pytest`:** tests con pytest contra PostGIS real (`docker-compose.test.yml`) y el
   comando `flask --app app sembrar` para cargar datos ficticios.
 - **`feat/metricas-api`:** `GET /api/metricas/{resumen, conciertos_por_mes, lugares, artistas,
-  densidad, distancias}` con filtro de fechas. Todo se calcula en SQL/PostGIS
+  densidad, distancias}` con filtro de fechas. **`feat/metricas-nuevas-api`** (#13) sumó
+  `dia_horario`, `proximos_dias`, `calidad`, `ingesta`, `anticipacion`, la concentración y la
+  columna `creado_en` (migración 0005). Todo se calcula en SQL/PostGIS
   (`repositories/metricas_repository.py`) y los parámetros se validan en
   `services/metricas_service.py`. Ver [API.md](API.md).
 - **`feat/metricas-ui`:** página `/metricas` con `react-router-dom`, indicadores, gráficos con
   Recharts y mapa de calor con leaflet.heat. Se carga con `React.lazy`.
-- **`feat/metricas-zonas` (opcional, después):** conciertos por partido del AMBA, con la capa de
+- **`feat/metricas-zonas` — descartada (octubre 2026).** Era: conciertos por partido del AMBA, con la capa de
   departamentos del IGN. **Antes de descargarla hay que verificar la licencia vigente en el portal
-  del IGN y confirmarlo.** Incluye la migración `0004` (tabla `zonas` con geometrías) y un mapa de
-  coropletas.
+  del IGN y confirmarlo.** Iba a incluir una tabla `zonas` con geometrías y un mapa de coropletas.
 
 **Terminada cuando:** la página muestra las métricas con los datos acumulados, el filtro de fechas
 las actualiza y los tests de servicios y endpoints pasan.
@@ -286,14 +311,14 @@ decidir.
 - Frontend: botón "Ingresar con Google" en el encabezado; sesión manejada por la librería del
   proveedor elegido.
 - Backend: función `usuario_actual()` que valida el token del proveedor (misma idea que
-  `verificar_token_ingesta`) y tabla `usuarios` (migración `0005`): `id`, `id_proveedor`, `email`
+  `verificar_token_ingesta`) y tabla `usuarios` (migración `0007`): `id`, `id_proveedor`, `email`
   y fecha de alta.
 - Página o sección "Mi cuenta" con **borrar mi cuenta** (obligatorio si guardamos datos
   personales) y una política de privacidad simple.
 
 #### 10. `feat/seguir-artistas`
 
-- Migración `0006`: tabla `artistas_seguidos` (`usuario_id`, `artista` normalizado), con
+- Migración `0008`: tabla `artistas_seguidos` (`usuario_id`, `artista` normalizado), con
   restricción única para no seguir dos veces al mismo.
 - `GET`, `POST` y `DELETE /yo/artistas` (requieren login).
 - Frontend: botón "Seguir" junto al artista en cada fila, y un filtro "Solo artistas que sigo".
@@ -309,11 +334,10 @@ decidir.
 
 ## 4. Orden sugerido
 
-1. **`chore/ci-calidad`**: primero, porque protege `main` para todo lo que sigue.
-2. **`feat/historial-conciertos`**: lo antes posible, porque cada día sin ella son datos perdidos.
-3. En paralelo: **`feat/filtro-fecha`** y **`feat/agregar-calendario`**.
-4. **`feat/filtros-en-url`** (después de la de fecha).
-5. **`feat/registro-busquedas`** y **`feat/telegram-semanal`**, en paralelo.
-6. **Métricas** (`chore/tests-pytest` → `feat/metricas-api` → `feat/metricas-ui`). Con datos ficticios se
-   pueden desarrollar ya; con datos reales, tienen sentido después de algunas semanas de historial.
-7. Etapa 3, recién con lo anterior estable.
+Hecho: CI (rama 0), historial (rama 1) y métricas (rama 6), además del pulido visual, la seguridad
+de la base y el README (ver la tabla de estado del §2). Lo que sigue:
+
+1. En paralelo: **`feat/filtro-fecha`** y **`feat/agregar-calendario`**.
+2. **`feat/filtros-en-url`** (después de la de fecha).
+3. **`feat/registro-busquedas`** (migración 0006) y **`feat/telegram-semanal`**, en paralelo.
+4. Etapa 3 (cuentas de usuario), recién con lo anterior estable.
