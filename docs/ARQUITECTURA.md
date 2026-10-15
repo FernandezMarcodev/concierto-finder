@@ -129,6 +129,7 @@ erDiagram
         int ubicacion FK "ON DELETE CASCADE, índice"
         date fecha "índice"
         time hora
+        timestamptz creado_en "cuándo lo encontró la ingesta (0005)"
     }
 ```
 
@@ -138,7 +139,9 @@ erDiagram
   (no recrea tablas existentes); `0002_url_evento_text` amplía `url_evento` a `TEXT`;
   `0003_historial_conciertos` agrega índices sobre `conciertos.fecha` y `conciertos.ubicacion`;
   `0004_seguridad_rls` habilita RLS en las tablas de `public` y quita los permisos a los roles de la
-  Data API de Supabase (ver D-13).
+  Data API de Supabase (ver D-13); `0005_creado_en` agrega `conciertos.creado_en` (cuándo lo
+  encontró la ingesta). Se agrega sin valor por defecto y después se le pone `now()`: así las filas
+  anteriores quedan en `null` en lugar de recibir la fecha de la migración.
 - **Historial:** los conciertos pasados se conservan. "Vigente" no se guarda: se calcula en cada
   consulta con `fecha >= hoy OR fecha IS NULL` (ver D-8).
 

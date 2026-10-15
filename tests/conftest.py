@@ -109,13 +109,16 @@ def crear_concierto(base):
     """Fábrica de conciertos. Se guardan con commit para que los vea cualquier sesión."""
     from app.models.concierto import Concierto
 
-    def _crear(nombre="Gira", artista="Artista", fecha=HOY, hora=None, ubicacion=None):
+    def _crear(nombre="Gira", artista="Artista", fecha=HOY, hora=None, ubicacion=None, url=None, **extra):
+        # extra: por ejemplo creado_en. Si no se pasa, la base usa su valor por defecto (now()).
         concierto = Concierto(
             nombre=nombre,
             artista=artista,
             fecha=fecha,
             hora=hora,
+            url_evento=url,
             ubicacion=ubicacion.id if ubicacion else None,
+            **extra,
         )
         base.add(concierto)
         base.commit()

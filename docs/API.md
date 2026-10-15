@@ -138,11 +138,13 @@ Cache-Control: public, max-age=300
 
 ```json
 { "filtro": {...}, "total": 400, "vigentes": 86, "pasados": 314, "sin_fecha": 5,
-  "lugares": 14, "artistas": 18, "primera_fecha": "2025-10-18", "ultima_fecha": "2027-01-09" }
+  "lugares": 14, "artistas": 18, "primera_fecha": "2025-10-18", "ultima_fecha": "2027-01-09",
+  "concentracion_top5": 62.4 }
 ```
 
 `vigentes` y `pasados` se calculan con la fecha de hoy en Argentina (RN-02). `artistas` cuenta los
-artistas distintos ya normalizados (RN-11).
+artistas distintos ya normalizados (RN-11). `concentracion_top5` es el porcentaje de los conciertos
+con lugar que se reparte entre los 5 lugares más activos (`null` si no hay conciertos con lugar).
 
 ### `GET /api/metricas/conciertos_por_mes`
 
@@ -193,11 +195,60 @@ grilla de `celda` grados (`ST_SnapToGrid`), así los lugares muy cercanos suman 
 - **`rangos`:** hasta 10 límites, crecientes y empezando en 0.
 - **Distancia:** se mide en km, geodésica y en línea recta.
 
+### `GET /api/metricas/dia_horario`
+
+```json
+{ "filtro": {...}, "celdas": [ { "dia": 5, "franja": 3, "nombre_franja": "20 a 22", "cantidad": 41 }, ... ] }
+```
+
+La grilla completa de 7 días por 5 franjas horarias (35 celdas, las vacías con `0`). `dia` sigue la
+norma ISO: 1 = lunes ... 7 = domingo. Las franjas son: `Día (6 a 18)`, `18 a 20`, `20 a 22`,
+`22 a 24` y `Trasnoche (0 a 6)` (RN-13). Solo cuentan los conciertos con fecha y hora.
+
+### `GET /api/metricas/proximos_dias?dias=14`
+
+```json
+{ "dias": [ { "fecha": "2026-10-15", "cantidad": 4 }, { "fecha": "2026-10-16", "cantidad": 9 }, ... ] }
+```
+
+Los conciertos de cada uno de los próximos `dias` días desde hoy (hora argentina), incluidos los
+días sin conciertos. **No usa el filtro de fechas** porque siempre mira hacia adelante. `dias`: de 7 a
+60 (por defecto, 14).
+
+### `GET /api/metricas/calidad`
+
+```json
+{ "filtro": {...}, "total": 200, "sin_fecha": 0, "sin_hora": 12, "sin_entradas": 3, "sin_ubicacion": 0 }
+```
+
+Cuántos conciertos no tienen fecha, hora, link de entradas (nulo o vacío) o lugar ubicado en el mapa.
+
+### `GET /api/metricas/ingesta?dias=30`
+
+```json
+{ "desde_que_se_mide": "2026-10-15", "dias": [ { "fecha": "2026-10-14", "nuevos": 0 }, { "fecha": "2026-10-15", "nuevos": 12 } ] }
+```
+
+Conciertos nuevos que encontró la ingesta en cada uno de los últimos `dias` días, según
+`creado_en` y en hora argentina. **No usa el filtro de fechas.** `dias`: de 7 a 90 (por defecto, 30).
+`desde_que_se_mide` es el primer `creado_en` registrado (`null` si todavía no hay ninguno).
+
+### `GET /api/metricas/anticipacion`
+
+```json
+{ "filtro": {...}, "mediana_dias": 34.0,
+  "rangos": [ { "desde_dias": 0, "hasta_dias": 8, "cantidad": 5 }, ..., { "desde_dias": 91, "hasta_dias": null, "cantidad": 2 } ] }
+```
+
+Con cuántos días de anticipación se anuncian los conciertos: fecha del concierto menos fecha en que
+lo encontró la ingesta (RN-14). Rangos `[0, 8)`, `[8, 31)`, `[31, 61)`, `[61, 91)` y `91 o más`.
+`mediana_dias` es `null` si no hay datos.
+
 ### Errores
 
 | Código | Cuándo | Cuerpo (ejemplo) |
 |---|---|---|
-| `400` | Fecha mal escrita, `desde` > `hasta`, rango de más de 10 años, `limite`/`celda`/`rangos`/punto fuera de los valores permitidos | `{"error": "'limite' debe estar entre 1 y 50"}` |
+| `400` | Fecha mal escrita, `desde` > `hasta`, rango de más de 10 años, `limite`/`celda`/`rangos`/`dias`/punto fuera de los valores permitidos | `{"error": "'limite' debe estar entre 1 y 50"}` |
 
 ## Errores generales
 

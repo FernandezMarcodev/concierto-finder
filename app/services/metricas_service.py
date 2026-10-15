@@ -23,6 +23,12 @@ CELDA_DEFECTO = 0.005  # grados ≈ 500 m en Buenos Aires
 CELDA_MINIMA = 0.001  # ≈ 100 m
 CELDA_MAXIMA = 0.1  # ≈ 10 km
 
+# Ventanas de días: próximos días (hacia adelante) e ingesta (hacia atrás)
+PROXIMOS_DIAS_DEFECTO = 14
+PROXIMOS_DIAS_MAXIMO = 60
+INGESTA_DIAS_DEFECTO = 30
+INGESTA_DIAS_MAXIMO = 90
+
 # Evita pedidos absurdos (por ejemplo, del año 1 al 9999) que generarían miles de meses vacíos.
 RANGO_MAXIMO_DIAS = 10 * 366
 
@@ -88,6 +94,10 @@ def leer_celda(args):
     return _leer_numero(args, "celda", float, CELDA_DEFECTO, CELDA_MINIMA, CELDA_MAXIMA)
 
 
+def leer_dias(args, defecto, maximo):
+    return _leer_numero(args, "dias", int, defecto, 7, maximo)
+
+
 def leer_punto(args):
     """(lat, lng) del pedido; si no vienen, el Obelisco. Se piden los dos o ninguno."""
     if args.get("lat") is None and args.get("lng") is None:
@@ -145,3 +155,25 @@ def obtener_densidad(filtro: FiltroFechas, celda):
 
 def obtener_distancias(filtro: FiltroFechas, lat, lng, limites_km):
     return metricas_repository.distribucion_de_distancias(filtro.desde, filtro.hasta, lat, lng, limites_km)
+
+
+def obtener_dia_y_horario(filtro: FiltroFechas):
+    return metricas_repository.dia_y_horario(filtro.desde, filtro.hasta)
+
+
+def obtener_proximos_dias(dias):
+    """Hacia adelante desde hoy (hora argentina): no usa el filtro de fechas."""
+    return metricas_repository.proximos_dias(hoy_argentina(), dias)
+
+
+def obtener_calidad(filtro: FiltroFechas):
+    return metricas_repository.calidad(filtro.desde, filtro.hasta)
+
+
+def obtener_ingesta(dias):
+    """Hacia atrás desde hoy (hora argentina): no usa el filtro de fechas."""
+    return metricas_repository.ingesta_por_dia(hoy_argentina(), dias)
+
+
+def obtener_anticipacion(filtro: FiltroFechas):
+    return metricas_repository.anticipacion(filtro.desde, filtro.hasta)

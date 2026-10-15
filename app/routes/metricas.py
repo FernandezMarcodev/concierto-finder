@@ -66,3 +66,37 @@ def distancias():
     limites = servicio.leer_rangos(request.args)
     rangos = servicio.obtener_distancias(filtro, lat, lng, limites)
     return _respuesta(filtro, punto=[lng, lat], rangos=[esquema.serializar_rango(r) for r in rangos])
+
+
+@bp.route("/dia_horario")
+def dia_horario():
+    filtro = servicio.leer_filtro(request.args)
+    celdas = servicio.obtener_dia_y_horario(filtro)
+    return _respuesta(filtro, celdas=[esquema.serializar_celda_dia_horario(c) for c in celdas])
+
+
+@bp.route("/calidad")
+def calidad():
+    filtro = servicio.leer_filtro(request.args)
+    return _respuesta(filtro, **esquema.serializar_calidad(servicio.obtener_calidad(filtro)))
+
+
+@bp.route("/anticipacion")
+def anticipacion():
+    filtro = servicio.leer_filtro(request.args)
+    return _respuesta(filtro, **esquema.serializar_anticipacion(servicio.obtener_anticipacion(filtro)))
+
+
+# Estas dos miran desde hoy (hacia adelante o hacia atrás) y no usan el filtro de fechas: se
+# configuran con ?dias=.
+@bp.route("/proximos_dias")
+def proximos_dias():
+    dias = servicio.leer_dias(request.args, servicio.PROXIMOS_DIAS_DEFECTO, servicio.PROXIMOS_DIAS_MAXIMO)
+    filas = servicio.obtener_proximos_dias(dias)
+    return {"dias": [esquema.serializar_dia(f) for f in filas]}, 200, {"Cache-Control": CACHE_METRICAS}
+
+
+@bp.route("/ingesta")
+def ingesta():
+    dias = servicio.leer_dias(request.args, servicio.INGESTA_DIAS_DEFECTO, servicio.INGESTA_DIAS_MAXIMO)
+    return esquema.serializar_ingesta(servicio.obtener_ingesta(dias)), 200, {"Cache-Control": CACHE_METRICAS}

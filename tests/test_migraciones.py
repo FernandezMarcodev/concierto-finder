@@ -38,3 +38,27 @@ def test_downgrade_y_upgrade_completos(app):
         upgrade(directory=DIRECTORIO_MIGRACIONES)
         indices = {i["name"] for i in inspect(db.engine).get_indexes("conciertos")}
         assert {"ix_conciertos_fecha", "ix_conciertos_ubicacion"} <= indices
+
+
+def test_creado_en_queda_vacio_en_las_filas_anteriores_a_la_migracion(app):
+    """
+    0005 agrega la columna sin DEFAULT y recién después le pone now(): las filas que ya existían
+    quedan en null ("no se sabe cuándo se encontró") y solo las nuevas llevan la fecha.
+    """
+    from sqlalchemy import text
+
+    with app.app_context():
+        downgrade(directory=DIRECTORIO_MIGRACIONES, revision="0004_seguridad_rls")
+        db.session.execute(text("INSERT INTO conciertos (nombre, artista) VALUES ('Viejo', 'Viejo')"))
+        db.session.commit()
+
+        upgrade(directory=DIRECTORIO_MIGRACIONES)
+        db.session.execute(text("INSERT INTO conciertos (nombre, artista) VALUES ('Nuevo', 'Nuevo')"))
+        db.session.commit()
+        filas = dict(db.session.execute(text("SELECT nombre, creado_en FROM conciertos")).all())
+
+        db.session.execute(text("TRUNCATE conciertos, ubicaciones RESTART IDENTITY CASCADE"))
+        db.session.commit()
+
+    assert filas["Viejo"] is None
+    assert filas["Nuevo"] is not None

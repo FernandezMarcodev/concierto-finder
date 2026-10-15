@@ -100,6 +100,9 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RN-10 | **Distancias**: geodésicas, en km y en línea recta, desde el Obelisco por defecto. Los rangos son semiabiertos `[desde, hasta)` y el último no tiene tope. |
 | RN-11 | **Mismo artista**: dos nombres son el mismo artista si coinciden sin distinguir mayúsculas, acentos ni espacios en los extremos ("Sofía Ríos" = "sofia rios"). En los rankings se muestra la escritura más frecuente. |
 | RN-12 | **Cobertura**: las métricas solo reflejan lo publicado en agendade.com.ar (primeras 5 páginas) dentro de AMBA, desde que se conserva el historial. No son el total de conciertos de la ciudad. |
+| RN-13 | **Franjas horarias** de la grilla día por horario: Día (6 a 18), 18 a 20, 20 a 22, 22 a 24 y Trasnoche (0 a 6). Un concierto a la 1:00 cuenta en la trasnoche del día calendario en que figura en la fuente. |
+| RN-14 | **Anticipación**: días entre la fecha en que la ingesta encontró el concierto (`creado_en`, en hora argentina) y la fecha del concierto. Solo cuentan los conciertos encontrados desde la migración 0005 y los que tienen fecha; si se encontró después de su fecha, no cuenta. |
+| RN-15 | **Calidad de datos**: un concierto está incompleto si le falta la fecha, la hora, el link de entradas (nulo o vacío) o un lugar con coordenadas. |
 
 ## 5. Requisitos no funcionales
 

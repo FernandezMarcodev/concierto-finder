@@ -32,8 +32,24 @@ def _filas(sql, **parametros):
 
 
 def resumen(desde, hasta, hoy):
-    """Totales generales: conciertos, vigentes, pasados, sin fecha, lugares y artistas distintos."""
+    """
+    Totales generales: conciertos, vigentes, pasados, sin fecha, lugares y artistas distintos.
+
+    También la concentración: qué porcentaje de los conciertos con lugar se reparte entre los
+    5 lugares más activos. Le da contexto al ranking (¿la escena depende de pocos lugares?).
+    """
     sql = f"""
+        WITH filtrados AS (
+            SELECT c.* FROM conciertos c WHERE {FILTRO_FECHAS}
+        ),
+        top5 AS (
+            SELECT count(*) AS cantidad
+            FROM filtrados
+            WHERE ubicacion IS NOT NULL
+            GROUP BY ubicacion
+            ORDER BY cantidad DESC
+            LIMIT 5
+        )
         SELECT
             count(*) AS total,
             count(*) FILTER (WHERE c.fecha >= :hoy OR c.fecha IS NULL) AS vigentes,
@@ -42,9 +58,13 @@ def resumen(desde, hasta, hoy):
             count(DISTINCT c.ubicacion) AS lugares,
             count(DISTINCT {ARTISTA_NORMALIZADO}) AS artistas,
             min(c.fecha) AS primera_fecha,
-            max(c.fecha) AS ultima_fecha
-        FROM conciertos c
-        WHERE {FILTRO_FECHAS}
+            max(c.fecha) AS ultima_fecha,
+            round(
+                100.0 * (SELECT coalesce(sum(cantidad), 0) FROM top5)
+                / nullif(count(*) FILTER (WHERE c.ubicacion IS NOT NULL), 0),
+                1
+            ) AS concentracion_top5
+        FROM filtrados c
     """
     return _filas(sql, desde=desde, hasta=hasta, hoy=hoy)[0]
 
@@ -168,3 +188,153 @@ def distribucion_de_distancias(desde, hasta, lat, lng, limites_km):
         ORDER BY r.orden
     """
     return _filas(sql, desde=desde, hasta=hasta, lat=lat, lng=lng, limites=limites_km)
+
+
+# Franjas horarias de la grilla día por horario. Un concierto a la 1:00 cuenta en la
+# "Trasnoche" del día calendario en que figura en la fuente.
+FRANJAS_HORARIAS = """
+    (VALUES
+        (1, 'Día (6 a 18)'),
+        (2, '18 a 20'),
+        (3, '20 a 22'),
+        (4, '22 a 24'),
+        (5, 'Trasnoche (0 a 6)')
+    ) AS f(orden, nombre)
+"""
+
+FRANJA_DE_LA_HORA = """
+    CASE
+        WHEN extract(hour FROM c.hora) < 6 THEN 5
+        WHEN extract(hour FROM c.hora) < 18 THEN 1
+        WHEN extract(hour FROM c.hora) < 20 THEN 2
+        WHEN extract(hour FROM c.hora) < 22 THEN 3
+        ELSE 4
+    END
+"""
+
+
+def dia_y_horario(desde, hasta):
+    """
+    Cantidad de conciertos por día de la semana (1 = lunes ... 7 = domingo) y franja horaria.
+    Devuelve la grilla completa (7 días por 5 franjas): las celdas sin conciertos vienen con 0.
+    Solo cuentan los conciertos con fecha y hora.
+    """
+    sql = f"""
+        WITH conteo AS (
+            SELECT
+                CAST(extract(isodow FROM c.fecha) AS int) AS dia,
+                {FRANJA_DE_LA_HORA} AS franja,
+                count(*) AS cantidad
+            FROM conciertos c
+            WHERE c.fecha IS NOT NULL AND c.hora IS NOT NULL AND {FILTRO_FECHAS}
+            GROUP BY 1, 2
+        )
+        SELECT d.dia, f.orden AS franja, f.nombre AS nombre_franja, coalesce(conteo.cantidad, 0) AS cantidad
+        FROM generate_series(1, 7) AS d(dia)
+        CROSS JOIN {FRANJAS_HORARIAS}
+        LEFT JOIN conteo ON conteo.dia = d.dia AND conteo.franja = f.orden
+        ORDER BY d.dia, f.orden
+    """
+    return _filas(sql, desde=desde, hasta=hasta)
+
+
+def proximos_dias(hoy, dias):
+    """Conciertos de cada uno de los próximos `dias` días (desde hoy), incluidos los días sin conciertos."""
+    sql = """
+        SELECT CAST(d AS date) AS fecha, count(c.id) AS cantidad
+        FROM generate_series(
+            CAST(:hoy AS date),
+            CAST(:hoy AS date) + CAST(:dias AS int) - 1,
+            interval '1 day'
+        ) AS d
+        LEFT JOIN conciertos c ON c.fecha = CAST(d AS date)
+        GROUP BY d
+        ORDER BY d
+    """
+    return _filas(sql, hoy=hoy, dias=dias)
+
+
+def calidad(desde, hasta):
+    """
+    Qué tan completos están los datos: cuántos conciertos no tienen fecha, hora, link de
+    entradas o lugar ubicado en el mapa. Sirve para vigilar el scraper: si la fuente cambia su
+    HTML, estos números suben.
+    """
+    sql = f"""
+        SELECT
+            count(*) AS total,
+            count(*) FILTER (WHERE c.fecha IS NULL) AS sin_fecha,
+            count(*) FILTER (WHERE c.hora IS NULL) AS sin_hora,
+            count(*) FILTER (WHERE c.url_evento IS NULL OR c.url_evento = '') AS sin_entradas,
+            count(*) FILTER (WHERE u.coordenadas IS NULL) AS sin_ubicacion
+        FROM conciertos c
+        LEFT JOIN ubicaciones u ON u.id = c.ubicacion
+        WHERE {FILTRO_FECHAS}
+    """
+    return _filas(sql, desde=desde, hasta=hasta)[0]
+
+
+# Fecha en que la ingesta encontró el concierto, en hora argentina (creado_en se guarda con zona)
+FECHA_DE_INGESTA = "CAST(c.creado_en AT TIME ZONE 'America/Argentina/Buenos_Aires' AS date)"
+
+
+def ingesta_por_dia(hoy, dias):
+    """
+    Conciertos nuevos que encontró la ingesta en cada uno de los últimos `dias` días. Una racha
+    de ceros cuando antes entraban conciertos es la señal de que el scraper se rompió.
+    También devuelve desde cuándo se mide (el primer creado_en registrado).
+    """
+    sql = f"""
+        WITH nuevos AS (
+            SELECT {FECHA_DE_INGESTA} AS fecha, count(*) AS cantidad
+            FROM conciertos c
+            WHERE c.creado_en IS NOT NULL
+            GROUP BY 1
+        )
+        SELECT
+            CAST(d AS date) AS fecha,
+            coalesce(nuevos.cantidad, 0) AS nuevos,
+            (SELECT min({FECHA_DE_INGESTA}) FROM conciertos c) AS desde_que_se_mide
+        FROM generate_series(
+            CAST(:hoy AS date) - CAST(:dias AS int) + 1,
+            CAST(:hoy AS date),
+            interval '1 day'
+        ) AS d
+        LEFT JOIN nuevos ON nuevos.fecha = CAST(d AS date)
+        ORDER BY d
+    """
+    return _filas(sql, hoy=hoy, dias=dias)
+
+
+# Rangos de anticipación en días: [0, 8) = hasta una semana, ..., [91, sin tope) = más de 3 meses
+LIMITES_ANTICIPACION = [0, 8, 31, 61, 91]
+
+
+def anticipacion(desde, hasta):
+    """
+    Con cuántos días de anticipación se anuncian los conciertos: fecha del concierto menos fecha
+    en que lo encontró la ingesta, agrupado en rangos, más la mediana. Solo cuentan los
+    conciertos con fecha y con creado_en (los registrados desde la migración 0005).
+    """
+    sql = f"""
+        WITH datos AS (
+            SELECT c.fecha - {FECHA_DE_INGESTA} AS dias
+            FROM conciertos c
+            WHERE c.creado_en IS NOT NULL AND c.fecha IS NOT NULL AND {FILTRO_FECHAS}
+        ),
+        validos AS (SELECT dias FROM datos WHERE dias >= 0),
+        rangos AS (
+            SELECT orden, desde_dias, lead(desde_dias) OVER (ORDER BY orden) AS hasta_dias
+            FROM unnest(CAST(:limites AS int[])) WITH ORDINALITY AS r(desde_dias, orden)
+        )
+        SELECT
+            r.desde_dias,
+            r.hasta_dias,
+            count(v.dias) AS cantidad,
+            (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY dias) FROM validos) AS mediana
+        FROM rangos r
+        LEFT JOIN validos v ON v.dias >= r.desde_dias AND (r.hasta_dias IS NULL OR v.dias < r.hasta_dias)
+        GROUP BY r.orden, r.desde_dias, r.hasta_dias
+        ORDER BY r.orden
+    """
+    return _filas(sql, desde=desde, hasta=hasta, limites=LIMITES_ANTICIPACION)
