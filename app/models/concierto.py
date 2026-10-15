@@ -15,5 +15,8 @@ class Concierto(db.Model):
     ubicacion = db.Column(db.Integer, db.ForeignKey("ubicaciones.id", ondelete="CASCADE"), index=True)
     fecha = db.Column(db.Date, index=True)
     hora = db.Column(db.Time)
+    # Cuándo lo encontró la ingesta (migración 0005). Lo completa la base al insertar; los
+    # conciertos anteriores a la migración no lo tienen (null = no se sabe).
+    creado_en = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
     ubicacion_ref = db.relationship("Ubicacion", back_populates="conciertos")

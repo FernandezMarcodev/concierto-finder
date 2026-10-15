@@ -9,13 +9,14 @@ La generación es determinística: con la misma semilla y el mismo "hoy" salen l
 """
 
 import random
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from geoalchemy2 import WKTElement
 
 from app.extensions import db
 from app.models.concierto import LARGO_TEXTO, Concierto
 from app.models.ubicacion import Ubicacion
+from app.services.fechas import ZONA_HORARIA
 
 # (nombre, lat, lng, peso). El peso hace que unos lugares tengan más actividad que otros,
 # como pasa en la realidad (y le da sentido al ranking de venues).
@@ -128,7 +129,34 @@ def generar_conciertos(hoy: date, cantidad: int, meses_atras: int, semilla: int,
                 "url_evento": f"https://example.com/entradas/{len(conciertos) + 1}",
             }
         )
+    _agregar_creado_en(conciertos, hoy, semilla)
     return conciertos
+
+
+# Anticipación con que se "encuentra" cada concierto ficticio (días antes de su fecha):
+# la mayoría se anuncia con uno o dos meses, algunos a último momento y otros con mucho tiempo.
+ANTICIPACION_DIAS = [2, 5, 10, 20, 30, 45, 60, 75, 90, 120]
+PESO_ANTICIPACION = [2, 3, 5, 8, 10, 9, 7, 4, 3, 2]
+# Las ingestas reales corren a las 9:10 y a las 21:10 (hora argentina)
+HORAS_DE_INGESTA = [time(9, 10), time(21, 10)]
+
+
+def _agregar_creado_en(conciertos, hoy, semilla):
+    """
+    Agrega a cada concierto cuándo lo habría encontrado la ingesta (`creado_en`), para que las
+    métricas de anticipación y de salud de la ingesta tengan datos en desarrollo. Usa un
+    generador aparte: así los conciertos (fechas, lugares, artistas) son los mismos de siempre.
+    """
+    azar = random.Random(semilla + 1)
+    for concierto in conciertos:
+        if concierto["fecha"] is None:
+            encontrado = hoy - timedelta(days=azar.randint(0, 120))
+        else:
+            dias_antes = azar.choices(ANTICIPACION_DIAS, weights=PESO_ANTICIPACION)[0]
+            # Nadie encuentra un concierto en el futuro: como mucho, hoy
+            encontrado = min(concierto["fecha"] - timedelta(days=dias_antes), hoy)
+        hora = azar.choice(HORAS_DE_INGESTA)
+        concierto["creado_en"] = datetime.combine(encontrado, hora, tzinfo=ZONA_HORARIA)
 
 
 def _crear_ubicaciones():
@@ -160,6 +188,7 @@ def sembrar(hoy: date, cantidad: int, meses_atras: int, semilla: int) -> int:
                 fecha=datos["fecha"],
                 hora=datos["hora"],
                 url_evento=datos["url_evento"],
+                creado_en=datos["creado_en"],
                 ubicacion=ubicaciones[datos["lugar"]].id,
             )
         )
