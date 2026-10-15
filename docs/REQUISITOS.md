@@ -56,6 +56,8 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 
 ### 3.2 Ingesta y mantenimiento de datos (operador / sistema)
 
+Los números RF-17 y RF-18 no se usan (quedaron libres en una versión anterior y no se reasignan).
+
 | ID | Requisito |
 |---|---|
 | RF-19 | La ingesta se ejecuta automáticamente cada 12 h (9:10 y 21:10, hora argentina) mediante un workflow de GitHub Actions, que antes despierta la API. |
@@ -80,7 +82,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RF-31 | **Lugares más activos** y **artistas que más tocan**: rankings de los 10 primeros, en barras horizontales con la posición y el valor al final de cada barra; cada ranking con su propio color. |
 | RF-32 | **Próximos 14 días**: conciertos de cada día desde hoy, en columnas con el valor arriba; los sábados y domingos en otro color, con leyenda. **¿Cuándo hay más conciertos?**: grilla de día de la semana por franja horaria (RN-13), con la cantidad en cada celda y una intensidad de color proporcional. **Anticipación**: histograma de días entre el anuncio y la fecha (RN-14), con la mediana en el texto. |
 | RF-33 | **Mapa de calor** sobre el mapa de Leaflet, con una escala de un solo color que empieza transparente, un punto por lugar encima y su leyenda ("menos" a "más conciertos"). |
-| RF-34 | Un filtro de período (Todo, Últimos 12 meses, Últimos 3 meses, Próximos, o fechas a medida) actualiza todas las métricas. Si "desde" es posterior a "hasta" se avisa y no se consulta. |
+| RF-34 | Un filtro de período (Todo, Últimos 12 meses, Últimos 3 meses, Próximos, o fechas a medida) actualiza todas las métricas. Si "desde" es posterior a "hasta" se avisa y no se consulta. "Próximos 14 días" y "Conciertos nuevos por día" no dependen del período: siempre miran desde hoy. |
 | RF-35 | Cada gráfico ofrece sus datos en una tabla desplegable. La página indica desde qué fecha hay datos y cuántos conciertos no tienen fecha. Una sección **Calidad de los datos** muestra qué porcentaje de los conciertos tiene fecha, hora, link de entradas y lugar en el mapa (RN-15), y los conciertos nuevos por día de los últimos 30 días (salud de la ingesta). Las métricas que dependen de `creado_en` avisan desde cuándo se miden. |
 | RF-36 | Las métricas también se exponen como API REST de solo lectura bajo `/api/metricas/...` (ver [API.md](API.md)). |
 
@@ -97,7 +99,7 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | RN-07 | El centro inicial del mapa es el Obelisco (−34,6037; −58,3816), con zoom 11. |
 | RN-08 | **Filtro de las métricas**: `desde` y `hasta` se aplican sobre la fecha del concierto (no la de ingesta) e incluyen los dos extremos. Sin filtro cuentan todos los conciertos; con filtro, los que no tienen fecha quedan afuera. Los conciertos sin fecha nunca entran en el gráfico por mes. |
 | RN-09 | Las métricas por lugar, el mapa de calor y las distancias excluyen los conciertos sin lugar o sin coordenadas. |
-| RN-10 | **Distancias**: geodésicas, en km y en línea recta, desde el Obelisco por defecto. Los rangos son semiabiertos `[desde, hasta)` y el último no tiene tope. |
+| RN-10 | **Distancias**: geodésicas, en km y en línea recta, desde el Obelisco por defecto. Los rangos son semiabiertos `[desde, hasta)` y el último no tiene tope. Solo se usa en la API (`/api/metricas/distancias`): la página no muestra esta métrica. |
 | RN-11 | **Mismo artista**: dos nombres son el mismo artista si coinciden sin distinguir mayúsculas, acentos ni espacios en los extremos ("Sofía Ríos" = "sofia rios"). En los rankings se muestra la escritura más frecuente. |
 | RN-12 | **Cobertura**: las métricas solo reflejan lo publicado en agendade.com.ar (primeras 5 páginas) dentro de AMBA, desde que se conserva el historial. No son el total de conciertos de la ciudad. |
 | RN-13 | **Franjas horarias** de la grilla día por horario: Día (6 a 18), 18 a 20, 20 a 22, 22 a 24 y Trasnoche (0 a 6). Un concierto a la 1:00 cuenta en la trasnoche del día calendario en que figura en la fuente. |

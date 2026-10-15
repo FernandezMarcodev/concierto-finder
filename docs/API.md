@@ -117,15 +117,16 @@ curl -X POST -H "Authorization: Bearer $SCRAPER_TOKEN" \
 
 Endpoints de solo lectura sobre **todo el historial** (vigentes y pasados). Se calculan en
 PostgreSQL/PostGIS: la API nunca devuelve las filas de conciertos, solo los resultados agregados.
-Reglas de negocio en [REQUISITOS.md](REQUISITOS.md) (RN-08 a RN-12).
+Reglas de negocio en [REQUISITOS.md](REQUISITOS.md) (RN-08 a RN-15).
 
-**Filtro común**, opcional en todos: `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (inclusivos).
+**Filtro común**, opcional: `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (inclusivos). Lo aceptan todos salvo
+`proximos_dias` e `ingesta`, que miran desde hoy y se configuran con `?dias=`.
 
 - Sin filtro cuentan todos los conciertos, incluidos los sin fecha.
 - Con filtro, solo los que tienen fecha dentro del rango.
 - El rango no puede superar los 10 años.
 
-Todas las respuestas incluyen el filtro aplicado y se pueden cachear 5 minutos:
+Todas se pueden cachear 5 minutos, y las que aceptan el filtro devuelven el filtro aplicado:
 
 ```
 200 OK
@@ -184,6 +185,9 @@ grilla de `celda` grados (`ST_SnapToGrid`), así los lugares muy cercanos suman 
 0,001 a 0,1 (por defecto 0,005 ≈ 500 m).
 
 ### `GET /api/metricas/distancias?lat=&lng=&rangos=0,5,10,20,40`
+
+> La página web ya no muestra esta métrica (se reemplazó por día y horario, próximos días y
+> anticipación), pero el endpoint sigue disponible.
 
 ```json
 { "filtro": {...}, "punto": [-58.3816, -34.6037],
@@ -255,5 +259,6 @@ lo encontró la ingesta (RN-14). Rangos `[0, 8)`, `[8, 31)`, `[31, 61)`, `[61, 9
 | Código | Cuándo | Cuerpo |
 |---|---|---|
 | `400` | Parámetros inválidos | `{"error": "Parámetros inválidos"}` |
-| `503` | Pool de conexiones a la base agotado (espera de 30 s) | `{"error": "Servidor ocupado, intenta nuevamente en unos segundos."}` |
+| `404` | Ruta inexistente | Página de error por defecto de Flask. |
+| `503` | Pool de conexiones a la base agotado (espera de 30 s) | `{"error": "Servidor ocupado, intentá de nuevo en unos segundos."}` |
 | `500` | Error no controlado | Página de error por defecto de Flask (el detalle queda en los logs). |
