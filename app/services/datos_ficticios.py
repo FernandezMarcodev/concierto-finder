@@ -153,8 +153,11 @@ def _agregar_creado_en(conciertos, hoy, semilla):
             encontrado = hoy - timedelta(days=azar.randint(0, 120))
         else:
             dias_antes = azar.choices(ANTICIPACION_DIAS, weights=PESO_ANTICIPACION)[0]
-            # Nadie encuentra un concierto en el futuro: como mucho, hoy
-            encontrado = min(concierto["fecha"] - timedelta(days=dias_antes), hoy)
+            encontrado = concierto["fecha"] - timedelta(days=dias_antes)
+            # Nadie encuentra un concierto en el futuro. Si caería después de hoy, se reparte en las
+            # últimas semanas (con "como mucho, hoy" se amontonaban todos en el día de hoy).
+            if encontrado > hoy:
+                encontrado = hoy - timedelta(days=azar.randint(0, 20))
         hora = azar.choice(HORAS_DE_INGESTA)
         concierto["creado_en"] = datetime.combine(encontrado, hora, tzinfo=ZONA_HORARIA)
 
