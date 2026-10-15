@@ -21,22 +21,42 @@ async function pedir(endpoint, filtro, extras) {
 
 export const metricasServicio = {
   // Pide todas las métricas en paralelo. Si alguna falla, falla todo (la página muestra el error).
+  // "próximos días" e "ingesta" miran desde hoy y no usan el filtro de fechas.
   async obtenerTodas(filtro) {
-    const [resumen, porMes, lugares, artistas, distancias, densidad] = await Promise.all([
+    const [
+      resumen,
+      porMes,
+      lugares,
+      artistas,
+      densidad,
+      diaHorario,
+      proximos,
+      calidad,
+      ingesta,
+      anticipacion,
+    ] = await Promise.all([
       pedir("resumen", filtro),
       pedir("conciertos_por_mes", filtro),
       pedir("lugares", filtro, { limite: 10 }),
       pedir("artistas", filtro, { limite: 10 }),
-      pedir("distancias", filtro),
       pedir("densidad", filtro),
+      pedir("dia_horario", filtro),
+      pedir("proximos_dias", {}, { dias: 14 }),
+      pedir("calidad", filtro),
+      pedir("ingesta", {}, { dias: 30 }),
+      pedir("anticipacion", filtro),
     ]);
     return {
       resumen,
       meses: porMes.meses,
       lugares: lugares.lugares,
       artistas: artistas.artistas,
-      rangos: distancias.rangos,
       puntos: densidad.puntos,
+      celdas: diaHorario.celdas,
+      proximos: proximos.dias,
+      calidad,
+      ingesta,
+      anticipacion,
     };
   },
 };

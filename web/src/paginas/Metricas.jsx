@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { FaCalendarCheck, FaHistory, FaMapMarkerAlt, FaMicrophone, FaMusic } from "react-icons/fa";
+import {
+  FaCalendarCheck,
+  FaChartPie,
+  FaHistory,
+  FaMapMarkerAlt,
+  FaMicrophone,
+  FaMusic,
+} from "react-icons/fa";
 import Encabezado from "../componentes/Encabezado/Encabezado";
 import Portada, { DatoPortada } from "../componentes/Portada/Portada";
 import PieDePagina from "../componentes/PieDePagina/PieDePagina";
@@ -9,9 +16,12 @@ import FiltroRango from "../componentes/FiltroRango/FiltroRango";
 import TarjetaDato from "../componentes/TarjetaDato/TarjetaDato";
 import PanelGrafico from "../componentes/PanelGrafico/PanelGrafico";
 import GraficoBarras from "../componentes/GraficoBarras/GraficoBarras";
+import GraficoArea from "../componentes/GraficoArea/GraficoArea";
+import GrillaDiaHorario from "../componentes/GrillaDiaHorario/GrillaDiaHorario";
+import MedidorCalidad from "../componentes/MedidorCalidad/MedidorCalidad";
 import MapaCalor from "../componentes/MapaCalor/MapaCalor";
 import { metricasServicio } from "../servicios/metricasServicio";
-import { fechaIso, mesCorto, mesLargo } from "../utilidades/fechas";
+import { diaCorto, diaLargo, esFinDeSemana, fechaIso, mesCorto, mesLargo } from "../utilidades/fechas";
 import { fechaLegible } from "../utilidades/texto";
 import { PERIODO_INICIAL, PERIODOS } from "../utilidades/periodos";
 import styles from "./metricas.module.css";
@@ -21,13 +31,6 @@ const filtroInicial = () => ({
   ...PERIODOS.find((p) => p.id === PERIODO_INICIAL).calcular(new Date()),
 });
 
-// Etiqueta de un rango de distancia: "0–5 km" o, el último, "40 km o más"
-const textoRango = (fila) =>
-  fila.hasta_km == null ? `${fila.desde_km} km o más` : `${fila.desde_km}–${fila.hasta_km} km`;
-
-// Versión corta para el eje del gráfico, que en el teléfono tiene poco lugar: "0–5", "40+"
-const textoRangoCorto = (texto) => texto.replace(" km o más", "+").replace(" km", "");
-
 const COLUMNA_CANTIDAD = { clave: "cantidad", titulo: "Conciertos" };
 
 // Con menos meses que esto, se avisa que el historial recién se está armando
@@ -36,14 +39,34 @@ const MESES_HISTORIAL_CORTO = 4;
 // "2026-10": el mes actual, para marcarlo en el gráfico mensual
 const mesActual = () => fechaIso(new Date()).slice(0, 7);
 
+// Rango de anticipación: "0 a 7 días", ..., "más de 90 días"
+const textoAnticipacion = (fila) =>
+  fila.hasta_dias == null
+    ? `más de ${fila.desde_dias - 1} días`
+    : `${fila.desde_dias} a ${fila.hasta_dias - 1} días`;
+const textoAnticipacionCorto = (texto) => texto.replace(" días", "").replace("más de ", "+");
+
+const DIAS_SEMANA = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+
 function NotaDatos({ resumen }) {
   const sinFecha = resumen.sin_fecha;
   return (
     <p className={styles.nota}>
       Datos acumulados desde el {fechaLegible(resumen.primera_fecha)}. Solo cuentan los conciertos publicados
       en agendade.com.ar dentro de AMBA; los cancelados o reprogramados pueden figurar igual.
-      {sinFecha === 1 && " 1 concierto no tiene fecha y no aparece en el gráfico por mes."}
-      {sinFecha > 1 && ` ${sinFecha} conciertos no tienen fecha y no aparecen en el gráfico por mes.`}
+      {sinFecha === 1 && " 1 concierto no tiene fecha y no aparece en los gráficos por fecha."}
+      {sinFecha > 1 && ` ${sinFecha} conciertos no tienen fecha y no aparecen en los gráficos por fecha.`}
+    </p>
+  );
+}
+
+// Para las métricas que dependen de creado_en: se empezaron a medir hace poco
+function SinDatosTodavia({ desde }) {
+  return (
+    <p className={styles.sinDatos}>
+      {desde
+        ? `Se empezó a medir el ${fechaLegible(desde)}. Los datos se van a ir sumando con cada actualización.`
+        : "Todavía no hay datos: se empiezan a registrar con la próxima actualización de conciertos."}
     </p>
   );
 }
@@ -91,15 +114,24 @@ const Metricas = () => {
     };
   }, [filtro.desde, filtro.hasta, filtroInvalido]);
 
-  // Los rangos de distancia con su etiqueta, para el gráfico y la tabla
-  const rangos = useMemo(
-    () => (datos?.rangos ?? []).map((fila) => ({ ...fila, rango: textoRango(fila) })),
+  // Filas con etiquetas listas para los gráficos y las tablas
+  const anticipacion = useMemo(
+    () => (datos?.anticipacion.rangos ?? []).map((fila) => ({ ...fila, rango: textoAnticipacion(fila) })),
+    [datos],
+  );
+  const celdasConNombre = useMemo(
+    () =>
+      (datos?.celdas ?? [])
+        .filter((c) => c.cantidad > 0)
+        .map((c) => ({ ...c, nombre_dia: DIAS_SEMANA[c.dia] })),
     [datos],
   );
 
   const resumen = datos?.resumen;
   const historialCorto = datos && datos.meses.length < MESES_HISTORIAL_CORTO;
   const esteMes = mesActual();
+  const totalAnticipacion = anticipacion.reduce((suma, fila) => suma + fila.cantidad, 0);
+  const totalProximos = (datos?.proximos ?? []).reduce((suma, fila) => suma + fila.cantidad, 0);
 
   let contenido;
   if (error) {
@@ -132,19 +164,83 @@ const Metricas = () => {
           <TarjetaDato icono={FaHistory} etiqueta="Pasados" valor={resumen.pasados} detalle="historial" />
           <TarjetaDato icono={FaMapMarkerAlt} etiqueta="Lugares" valor={resumen.lugares} />
           <TarjetaDato icono={FaMicrophone} etiqueta="Artistas" valor={resumen.artistas} />
+          <TarjetaDato
+            icono={FaChartPie}
+            etiqueta="Concentración"
+            valor={resumen.concentracion_top5}
+            sufijo=" %"
+            detalle="en los 5 lugares más activos"
+          />
         </div>
 
         <div className={styles.grilla}>
           <PanelGrafico
             ancho
+            titulo="Próximos 14 días"
+            descripcion={`${totalProximos} conciertos anunciados, día por día. No depende del período elegido arriba.`}
+            columnas={[{ clave: "fecha", titulo: "Día", formatear: diaLargo }, COLUMNA_CANTIDAD]}
+            filas={datos.proximos}
+          >
+            <GraficoBarras
+              datos={datos.proximos}
+              claveCategoria="fecha"
+              formatearEje={diaCorto}
+              formatearDetalle={diaLargo}
+              mostrarValores
+              destacar={(fila) => esFinDeSemana(fila.fecha)}
+              leyenda={[
+                { texto: "Lunes a viernes", color: "--color-grafico" },
+                { texto: "Sábado y domingo", color: "--color-serie-finde" },
+              ]}
+            />
+          </PanelGrafico>
+
+          <PanelGrafico
+            titulo="¿Cuándo hay más conciertos?"
+            descripcion="Por día de la semana y horario de inicio. Pasá el mouse por una celda para ver el detalle."
+            columnas={[
+              { clave: "nombre_dia", titulo: "Día" },
+              { clave: "nombre_franja", titulo: "Horario" },
+              COLUMNA_CANTIDAD,
+            ]}
+            filas={celdasConNombre}
+          >
+            <GrillaDiaHorario celdas={datos.celdas} />
+          </PanelGrafico>
+
+          <PanelGrafico
+            titulo="¿Con cuánta anticipación se anuncian?"
+            descripcion={
+              datos.anticipacion.mediana_dias != null
+                ? `La mitad de los conciertos se anuncia con ${Math.round(datos.anticipacion.mediana_dias)} días o más de anticipación.`
+                : "Días entre que el concierto aparece en la agenda y su fecha."
+            }
+            columnas={[{ clave: "rango", titulo: "Anticipación" }, COLUMNA_CANTIDAD]}
+            filas={totalAnticipacion > 0 ? anticipacion : []}
+          >
+            {totalAnticipacion > 0 ? (
+              <GraficoBarras
+                datos={anticipacion}
+                claveCategoria="rango"
+                formatearEje={textoAnticipacionCorto}
+                color="--color-serie-anticipacion"
+                mostrarValores
+              />
+            ) : (
+              <SinDatosTodavia desde={datos.ingesta.desde_que_se_mide} />
+            )}
+          </PanelGrafico>
+
+          <PanelGrafico
+            ancho
             titulo="Conciertos por mes"
-            descripcion="Estacionalidad: cuántos conciertos hubo (o hay anunciados) cada mes."
+            descripcion="Cómo evoluciona la cantidad de conciertos (los meses futuros solo cuentan lo ya anunciado)."
             columnas={[{ clave: "mes", titulo: "Mes", formatear: mesLargo }, COLUMNA_CANTIDAD]}
             filas={datos.meses}
           >
-            <GraficoBarras
+            <GraficoArea
               datos={datos.meses}
-              claveCategoria="mes"
+              claveX="mes"
               formatearEje={mesCorto}
               formatearDetalle={mesLargo}
               marca={{ categoria: esteMes, texto: "Este mes" }}
@@ -157,7 +253,14 @@ const Metricas = () => {
             columnas={[{ clave: "nombre", titulo: "Lugar" }, COLUMNA_CANTIDAD]}
             filas={datos.lugares}
           >
-            <GraficoBarras datos={datos.lugares} claveCategoria="nombre" horizontal numerar mostrarValores />
+            <GraficoBarras
+              datos={datos.lugares}
+              claveCategoria="nombre"
+              horizontal
+              numerar
+              mostrarValores
+              color="--color-serie-lugares"
+            />
           </PanelGrafico>
 
           <PanelGrafico
@@ -176,28 +279,54 @@ const Metricas = () => {
               horizontal
               numerar
               mostrarValores
+              color="--color-serie-artistas"
             />
           </PanelGrafico>
 
           <PanelGrafico
-            titulo="Distancia al Obelisco"
-            descripcion="Cuántos conciertos hay en cada rango de distancia, en km y en línea recta."
-            columnas={[{ clave: "rango", titulo: "Distancia" }, COLUMNA_CANTIDAD]}
-            filas={rangos}
-          >
-            <GraficoBarras
-              datos={rangos}
-              claveCategoria="rango"
-              formatearEje={textoRangoCorto}
-              mostrarValores
-            />
-          </PanelGrafico>
-
-          <PanelGrafico
+            ancho
             titulo="Mapa de calor"
             descripcion="Dónde se concentran los conciertos. Los lugares a menos de ≈ 500 m se suman juntos."
           >
             <MapaCalor puntos={datos.puntos} />
+          </PanelGrafico>
+        </div>
+
+        <h2 className={styles.seccion}>Calidad de los datos</h2>
+        <p className={styles.seccionDescripcion}>
+          Cómo viene la información que alimenta la página. Si la fuente cambia y el scraper deja de leer
+          bien, se nota acá primero.
+        </p>
+
+        <div className={styles.grilla}>
+          <PanelGrafico
+            titulo="Datos completos"
+            descripcion="Qué porcentaje de los conciertos tiene cada dato."
+          >
+            <MedidorCalidad calidad={datos.calidad} />
+          </PanelGrafico>
+
+          <PanelGrafico
+            titulo="Conciertos nuevos por día"
+            descripcion="Cuántos conciertos nuevos encontró cada actualización, en los últimos 30 días."
+            columnas={[
+              { clave: "fecha", titulo: "Día", formatear: diaLargo },
+              { clave: "nuevos", titulo: "Nuevos" },
+            ]}
+            filas={datos.ingesta.desde_que_se_mide ? datos.ingesta.dias : []}
+          >
+            {datos.ingesta.desde_que_se_mide ? (
+              <GraficoArea
+                datos={datos.ingesta.dias}
+                claveX="fecha"
+                claveValor="nuevos"
+                formatearEje={diaCorto}
+                formatearDetalle={diaLargo}
+                formatearValor={(n) => `${n} ${n === 1 ? "concierto nuevo" : "conciertos nuevos"}`}
+              />
+            ) : (
+              <SinDatosTodavia desde={null} />
+            )}
           </PanelGrafico>
         </div>
       </div>

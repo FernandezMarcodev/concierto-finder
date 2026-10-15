@@ -75,13 +75,13 @@ eventos fuera de AMBA, carga manual de eventos, notificaciones.
 | ID | Requisito |
 |---|---|
 | RF-28 | Una página **Métricas** (`/metricas`), accesible desde el encabezado, muestra indicadores y gráficos calculados sobre todo el historial (vigentes y pasados). |
-| RF-29 | Indicadores con ícono: total de conciertos, vigentes, pasados, lugares distintos y artistas distintos. Mientras haya menos de 4 meses de historial, un aviso explica desde cuándo se guarda. El gráfico por mes marca el mes actual y los rankings muestran la posición (1, 2, 3…). |
-| RF-30 | **Conciertos por mes** (estacionalidad): gráfico de columnas que incluye los meses sin conciertos. |
-| RF-31 | **Lugares más activos** y **artistas que más tocan**: rankings de los 10 primeros, en barras horizontales con el valor al final de cada barra. |
-| RF-32 | **Distancia al Obelisco**: cantidad de conciertos por rango de distancia (0–5, 5–10, 10–20, 20–40 y 40 km o más). |
+| RF-29 | Indicadores con ícono: total de conciertos, vigentes, pasados, lugares distintos, artistas distintos y **concentración** (porcentaje de los conciertos en los 5 lugares más activos). Mientras haya menos de 4 meses de historial, un aviso explica desde cuándo se guarda. |
+| RF-30 | **Conciertos por mes**: gráfico de área (línea con área suave) que incluye los meses sin conciertos y marca el mes actual con una línea vertical. |
+| RF-31 | **Lugares más activos** y **artistas que más tocan**: rankings de los 10 primeros, en barras horizontales con la posición y el valor al final de cada barra; cada ranking con su propio color. |
+| RF-32 | **Próximos 14 días**: conciertos de cada día desde hoy, en columnas con el valor arriba; los sábados y domingos en otro color, con leyenda. **¿Cuándo hay más conciertos?**: grilla de día de la semana por franja horaria (RN-13), con la cantidad en cada celda y una intensidad de color proporcional. **Anticipación**: histograma de días entre el anuncio y la fecha (RN-14), con la mediana en el texto. |
 | RF-33 | **Mapa de calor** sobre el mapa de Leaflet, con una escala de un solo color que empieza transparente, un punto por lugar encima y su leyenda ("menos" a "más conciertos"). |
 | RF-34 | Un filtro de período (Todo, Últimos 12 meses, Últimos 3 meses, Próximos, o fechas a medida) actualiza todas las métricas. Si "desde" es posterior a "hasta" se avisa y no se consulta. |
-| RF-35 | Cada gráfico ofrece sus datos en una tabla desplegable. La página indica desde qué fecha hay datos y cuántos conciertos no tienen fecha. |
+| RF-35 | Cada gráfico ofrece sus datos en una tabla desplegable. La página indica desde qué fecha hay datos y cuántos conciertos no tienen fecha. Una sección **Calidad de los datos** muestra qué porcentaje de los conciertos tiene fecha, hora, link de entradas y lugar en el mapa (RN-15), y los conciertos nuevos por día de los últimos 30 días (salud de la ingesta). Las métricas que dependen de `creado_en` avisan desde cuándo se miden. |
 | RF-36 | Las métricas también se exponen como API REST de solo lectura bajo `/api/metricas/...` (ver [API.md](API.md)). |
 
 ## 4. Reglas de negocio
