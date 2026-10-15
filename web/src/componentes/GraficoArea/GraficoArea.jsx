@@ -12,6 +12,15 @@ import styles from "./graficoArea.module.css";
 
 const ALTO = 240;
 
+// Dónde va el texto de la marca: centrado sobre la línea, salvo en los bordes, donde se cargaría
+// sobre los números del eje (primer punto) o se cortaría (último punto).
+function posicionDelTexto(datos, claveX, categoria) {
+  const indice = datos.findIndex((fila) => fila[claveX] === categoria);
+  if (indice === 0) return "insideTopLeft";
+  if (indice === datos.length - 1) return "insideTopRight";
+  return "top";
+}
+
 function ContenidoTooltip({ active, payload, label, formatearDetalle, formatearValor }) {
   if (!active || !payload?.length) return null;
   return (
@@ -57,7 +66,7 @@ function GraficoArea({
             <ReferenceLine
               x={marca.categoria}
               className={styles.marca}
-              label={{ value: marca.texto, position: "top" }}
+              label={{ value: marca.texto, position: posicionDelTexto(datos, claveX, marca.categoria) }}
             />
           )}
           <Tooltip
