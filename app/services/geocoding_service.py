@@ -1,6 +1,7 @@
 import logging
 
 from app.services.http import TIMEOUT_SEGUNDOS, nueva_sesion
+from app.services.lugares_conocidos import coordenadas_conocidas
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,18 @@ def dentro_de_amba(lat, lon):
 
 
 def obtener_coordenadas(nombre_lugar):
-    """Obtiene (lat, lon) usando Nominatim de OpenStreetMap. Devuelve (None, None) si no hay resultado."""
-    params = {"q": nombre_lugar, "format": "json", "limit": 1}
+    """
+    Obtiene (lat, lon) de un lugar. Devuelve (None, None) si no hay resultado.
+    Primero mira la tabla de lugares conocidos y, si no está, consulta Nominatim (OpenStreetMap).
+    """
+    lat, lon = coordenadas_conocidas(nombre_lugar)
+    if lat is not None:
+        return lat, lon
+
+    # countrycodes=ar: sin esto, "Centro Cultural, San Isidro" puede caer en otro país.
+    # No se limita la búsqueda al recuadro de AMBA (bounded=1) porque Nominatim devuelve
+    # cualquier coincidencia parcial adentro: "Teatro Mendoza, Mendoza" daba un teatro de la calle Mendoza.
+    params = {"q": nombre_lugar, "format": "json", "limit": 1, "countrycodes": "ar"}
 
     try:
         respuesta = _sesion.get(URL_NOMINATIM, params=params, timeout=TIMEOUT_SEGUNDOS)

@@ -124,9 +124,9 @@ def _recortar(texto):
 
 def _obtener_o_crear_ubicacion(nombre, descartadas):
     """
-    Devuelve la Ubicacion para `nombre`, creándola con Nominatim si no existe.
-    Devuelve None si no se encuentra o queda fuera de AMBA. `descartadas`
-    guarda esos nombres para no repetir la geocodificación en la misma corrida.
+    Devuelve la Ubicacion para `nombre`; si no existe, la crea con sus coordenadas (obtener_coordenadas).
+    Devuelve None si no se encuentra o queda fuera de AMBA. `descartadas` guarda esos nombres
+    con el motivo ({nombre: motivo}) para no repetir la geocodificación en la misma corrida.
     """
     if nombre in descartadas:
         return None
@@ -136,20 +136,17 @@ def _obtener_o_crear_ubicacion(nombre, descartadas):
         if ubicacion.coordenadas is not None:
             punto = to_shape(ubicacion.coordenadas)
             if not dentro_de_amba(punto.y, punto.x):
-                logger.info("'%s' está fuera de AMBA", nombre)
-                descartadas.add(nombre)
+                descartadas[nombre] = "está fuera de AMBA"
                 return None
         return ubicacion
 
     lat, lon = obtener_coordenadas(nombre)
     if not (lat and lon):
-        logger.info("No se encontró ubicación para '%s'", nombre)
-        descartadas.add(nombre)
+        descartadas[nombre] = "no se encontró la ubicación"
         return None
     # Solo se guarda lo que cae dentro de la región servida (AMBA)
     if not dentro_de_amba(lat, lon):
-        logger.info("'%s' está fuera de AMBA", nombre)
-        descartadas.add(nombre)
+        descartadas[nombre] = "está fuera de AMBA"
         return None
 
     ubicacion = Ubicacion(
@@ -167,7 +164,13 @@ def _guardar_concierto(evento, descartadas):
     """Guarda el evento si su lugar está en AMBA y no estaba cargado. Devuelve True si se insertó."""
     ubicacion = _obtener_o_crear_ubicacion(evento["ubicacion"], descartadas)
     if ubicacion is None:
-        logger.info("No se agrega el concierto '%s'", evento["nombre_evento"])
+        # El motivo va en cada línea: antes solo aparecía la primera vez que se descartaba el lugar
+        logger.info(
+            "No se agrega el concierto '%s': '%s' %s",
+            evento["nombre_evento"],
+            evento["ubicacion"],
+            descartadas[evento["ubicacion"]],
+        )
         return False
 
     nombre = _recortar(evento["nombre_evento"])
@@ -216,7 +219,7 @@ def ingestar_agendade() -> list[dict] | None:
 def _recorrer_agenda():
     sesion = nueva_sesion()
     conciertos = []
-    descartadas = set()
+    descartadas = {}
     insertados = 0
 
     for pagina in PAGINAS:
