@@ -102,6 +102,7 @@ flowchart TD
 | `schemas/` | Serialización manual a dict/JSON (`[lng, lat]`, fechas ISO o `null`). |
 | `services/scraper_service.py` | Ingesta: descarga, parseo, resolución de lugar, deduplicación y alta. |
 | `services/geocoding_service.py` | Nominatim y la regla de región AMBA (fuente de verdad de los límites). |
+| `services/lugares_conocidos.py` | Coordenadas verificadas a mano de lugares de AMBA que Nominatim no encuentra (se consulta antes que Nominatim). |
 | `services/tareas.py` | Hilos `mantener_despierta` (keep alive dentro de una franja horaria, o mientras corre una ingesta), `programar_limpieza_diaria` e `ingesta_inicial` (solo si la base está vacía). |
 | `services/http.py` | `requests.Session` compartida y timeout por defecto. |
 | `services/metricas_service.py` | Lee y valida los parámetros de las métricas (fechas, límite, celda, punto, rangos, días), aplica los valores por defecto y llama al repositorio. |
@@ -266,7 +267,8 @@ sequenceDiagram
             A->>S: GET evento
             A->>D: ¿lugar por nombre (ILIKE)?
             alt no existe
-                A->>G: buscar nombre
+                A->>A: ¿está en lugares conocidos?
+                A->>G: si no, buscar nombre (solo Argentina)
                 A->>A: ¿dentro de AMBA?
                 A->>D: INSERT ubicacion (commit)
             end

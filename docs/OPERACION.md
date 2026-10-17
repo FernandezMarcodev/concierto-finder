@@ -205,6 +205,7 @@ despierta la instancia, la limpieza corre al menos una vez por día.
 | La ingesta responde `503 Endpoint deshabilitado` | Falta `SCRAPER_TOKEN` | Configurarlo y reiniciar. |
 | La ingesta responde `401` | Token incorrecto o mal enviado | Revisar el header `Authorization: Bearer ...`. |
 | La API responde `503 Servidor ocupado` | Pool de conexiones agotado | Revisar consultas lentas o la carga; el pool es de 3+2 conexiones. |
+| Un concierto de AMBA no aparece y el log dice `No se agrega el concierto '...': '...' no se encontró la ubicación` | Nominatim no conoce el lugar con ese nombre | Buscar el lugar en openstreetmap.org (por nombre oficial o dirección) y sumarlo a `app/services/lugares_conocidos.py` con la clave del log en minúsculas y sin tildes. |
 | La ingesta lee eventos pero no guarda ninguno | Cambió el HTML de agendade o Nominatim no responde | Revisar los logs (`app.services.scraper_service`) con `LOG_LEVEL=DEBUG`. |
 | El frontend local muestra datos de producción | Falta `VITE_API_URL` | Crear `web/.env.local`. |
 | `flask db upgrade` falla con `permission denied to create extension` | El usuario no puede crear PostGIS | Crear la extensión como superusuario una vez. |

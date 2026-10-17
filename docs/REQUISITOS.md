@@ -64,7 +64,7 @@ Los números RF-17 y RF-18 no se usan (quedaron libres en una versión anterior 
 | RF-19 bis | Al arrancar, si la base no tiene conciertos, la API ejecuta la ingesta sola en segundo plano. Nunca corren dos ingestas a la vez (un pedido concurrente recibe 409). |
 | RF-20 | La ingesta se dispara con `GET` o `POST /ingestar_agendade` y exige el token `SCRAPER_TOKEN`. Sin token configurado, el endpoint queda deshabilitado (503). |
 | RF-21 | La ingesta recorre las páginas 1 a 5 de la agenda y, de cada evento, extrae título, artista (campo "ARTISTA" o "SHOW"; si falta, el título), lugar ("VENUE" + "UBICACIÓN"), fecha, hora y URL de compra. |
-| RF-22 | El lugar se busca entre los ya registrados por nombre (coincidencia parcial, sin distinguir mayúsculas). Si no existe, se geocodifica con Nominatim y se registra con su punto y un enlace de Google Maps. |
+| RF-22 | El lugar se busca entre los ya registrados por nombre (coincidencia parcial, sin distinguir mayúsculas). Si no existe, se buscan sus coordenadas primero en la tabla de lugares conocidos (`services/lugares_conocidos.py`) y después en Nominatim, limitado a Argentina, y se registra con su punto y un enlace de Google Maps. |
 | RF-23 | Solo se guardan conciertos cuyo lugar cae **dentro de AMBA** (ver RN-01). Los lugares no encontrados o fuera de AMBA se descartan, sin volver a consultarlos en la misma corrida. |
 | RF-24 | No se insertan conciertos ya existentes (mismo nombre, artista, fecha y lugar). |
 | RF-25 | La respuesta de la ingesta devuelve todos los eventos leídos (incluidos los descartados). |
@@ -131,6 +131,9 @@ Los números RF-17 y RF-18 no se usan (quedaron libres en una versión anterior 
 - Una sola fuente de datos; el scraper depende de las clases CSS de agendade.com.ar
   (`link-block-11`, `div-block-192`, `div-block-243`, etc.). Un rediseño del sitio rompe la ingesta.
 - La geocodificación usa el servicio público de Nominatim (máximo 1 pedido por segundo, sin SLA).
+  Nominatim busca por el nombre que el lugar tiene en OpenStreetMap, así que muchas salas y estadios
+  no aparecen con el nombre de la agenda ("Estadio Huracán" es "Estadio Tomás Adolfo Ducó"): esos
+  lugares se cargan a mano en la tabla de lugares conocidos, con coordenadas verificadas en OSM.
 - PostgreSQL con la extensión PostGIS es obligatorio.
 - La URL de la API queda fija en el build del frontend (`VITE_API_URL`).
 - Se supone un volumen chico (cientos de conciertos): el frontend descarga la lista completa.
@@ -141,6 +144,7 @@ Los números RF-17 y RF-18 no se usan (quedaron libres en una versión anterior 
 |---|---|
 | La búsqueda de lugar por nombre parcial (`ILIKE %nombre%`) puede asociar un evento al lugar equivocado si un nombre contiene a otro. | Marcador en el lugar incorrecto. |
 | `ubicaciones.nombre` admite 50 caracteres; un lugar con nombre más largo hace fallar el alta y se pierde ese evento. | Pérdida de algunos eventos. |
+| Muchos bares y salas chicas de AMBA (por ejemplo Lucille, La Tangente, Lalalá o CC Richards) no están cargados en OpenStreetMap con ningún nombre, así que Nominatim no los encuentra y sus conciertos se descartan. La tabla de lugares conocidos solo cubre los lugares agregados a mano. | Faltan conciertos de lugares chicos. Se pueden recuperar de a uno: el log dice qué lugar no se encontró, y se agrega a `lugares_conocidos.py` con la coordenada de su dirección (ver `OPERACION.md` §8). |
 | `capacidad_total` siempre se guarda en 0 (la fuente no la informa). | Campo sin uso real. |
 | La ingesta corre dentro del pedido HTTP (varios minutos). | Si el cliente o un proxy corta por timeout, la ingesta igual continúa en el servidor, pero no se ve el resultado. |
 | El frontend no tiene tests automatizados, y el scraper solo tiene tests de sus funciones de parseo (no del recorrido del HTML de agendade). | Las regresiones del frontend y los cambios de HTML de la fuente se detectan a mano. |
