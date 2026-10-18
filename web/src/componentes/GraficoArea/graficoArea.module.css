@@ -36,16 +36,27 @@
   stroke: var(--color-border);
 }
 
-/* Franja que marca una categoría (el mes actual) */
+/* Línea que marca una categoría (el mes actual) */
 .grafico :global(.recharts-reference-line line) {
   stroke: var(--color-text-tertiary);
   stroke-width: 1;
+  stroke-dasharray: 4 3;
 }
 
-.grafico :global(.recharts-reference-line .recharts-label) {
-  fill: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 700;
+/* Leyenda de la marca, fuera del dibujo: la muestra repite la línea punteada */
+.leyenda {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.leyendaMuestra {
+  width: 0;
+  height: 12px;
+  border-left: 1px dashed var(--color-text-tertiary);
 }
 
 .cursor {

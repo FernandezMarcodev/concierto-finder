@@ -73,7 +73,7 @@
 
   --color-grafico: #0277bd;
   --color-serie-finde: #eb6834;
-  /* Aqua y magenta quedan por debajo de 3:1 en el tema claro: sus gráficos muestran los valores y la tabla */
+  /* Aqua y magenta quedan por debajo de 3:1 en el tema claro: sus gráficos muestran los valores */
   --color-serie-lugares: #1baf7a;
   --color-serie-artistas: #6250d6;
   --color-serie-anticipacion: #e87ba4;

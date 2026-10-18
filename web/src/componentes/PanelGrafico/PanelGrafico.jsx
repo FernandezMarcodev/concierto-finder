@@ -1,8 +1,8 @@
 import styles from "./panelGrafico.module.css";
 
 // Tarjeta de un gráfico: título, descripción, el gráfico y sus datos como tabla.
-// La tabla (desplegable) hace que la información no dependa solo de ver el gráfico:
-// sirve para lectores de pantalla y para quien quiera el número exacto.
+// La tabla no se ve en pantalla (la página queda más limpia), pero los lectores de pantalla
+// la leen: un gráfico de Recharts es un dibujo y, sin la tabla, sus números no llegan a quien no ve.
 // columnas: [{ clave, titulo, formatear? }]
 function PanelGrafico({ titulo, descripcion, columnas, filas, ancho = false, children }) {
   return (
@@ -13,9 +13,10 @@ function PanelGrafico({ titulo, descripcion, columnas, filas, ancho = false, chi
       <div className={styles.contenido}>{children}</div>
 
       {columnas && filas?.length > 0 && (
-        <details className={styles.tabla}>
-          <summary>Ver datos en tabla</summary>
+        // El div es el que se oculta: una tabla ignora width: 1px y seguiría ocupando su ancho
+        <div className={styles.soloLectores}>
           <table>
+            <caption>{titulo}</caption>
             <thead>
               <tr>
                 {columnas.map((columna) => (
@@ -37,7 +38,7 @@ function PanelGrafico({ titulo, descripcion, columnas, filas, ancho = false, chi
               ))}
             </tbody>
           </table>
-        </details>
+        </div>
       )}
     </section>
   );
