@@ -12,15 +12,6 @@ import styles from "./graficoArea.module.css";
 
 const ALTO = 240;
 
-// Dónde va el texto de la marca: centrado sobre la línea, salvo en los bordes, donde se cargaría
-// sobre los números del eje (primer punto) o se cortaría (último punto).
-function posicionDelTexto(datos, claveX, categoria) {
-  const indice = datos.findIndex((fila) => fila[claveX] === categoria);
-  if (indice === 0) return "insideTopLeft";
-  if (indice === datos.length - 1) return "insideTopRight";
-  return "top";
-}
-
 function ContenidoTooltip({ active, payload, label, formatearDetalle, formatearValor }) {
   if (!active || !payload?.length) return null;
   return (
@@ -36,7 +27,8 @@ function ContenidoTooltip({ active, payload, label, formatearDetalle, formatearV
  * en el tiempo (conciertos por mes, conciertos nuevos por día de ingesta), donde importa la
  * tendencia más que cada valor por separado.
  * - color: variable CSS de la serie (por defecto, el azul de los gráficos).
- * - marca: { categoria, texto } resalta un punto del eje con una franja (por ejemplo, el mes actual).
+ * - marca: { categoria, texto } resalta un punto del eje con una línea vertical (por ejemplo, el mes
+ *   actual). El texto va en una leyenda arriba del gráfico: dentro del dibujo se superponía con la serie.
  */
 function GraficoArea({
   datos,
@@ -48,47 +40,53 @@ function GraficoArea({
   formatearDetalle = (valor) => valor,
   formatearValor = (n) => `${n} ${n === 1 ? "concierto" : "conciertos"}`,
 }) {
+  const hayMarca = marca && datos.some((fila) => fila[claveX] === marca.categoria);
+
   return (
-    <div className={styles.grafico} style={{ height: ALTO, "--color-serie": `var(${color})` }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={datos} margin={{ top: marca ? 24 : 8, right: 12, bottom: 0, left: 0 }}>
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey={claveX}
-            tickLine={false}
-            tickFormatter={formatearEje}
-            interval="preserveStartEnd"
-            minTickGap={16}
-          />
-          <YAxis allowDecimals={false} axisLine={false} tickLine={false} width={32} />
-          {marca && datos.some((fila) => fila[claveX] === marca.categoria) && (
-            // En una serie de tiempo cada mes es un punto: la marca es una línea vertical, no una franja
-            <ReferenceLine
-              x={marca.categoria}
-              className={styles.marca}
-              label={{ value: marca.texto, position: posicionDelTexto(datos, claveX, marca.categoria) }}
+    <div style={{ "--color-serie": `var(${color})` }}>
+      {hayMarca && (
+        <div className={styles.leyenda}>
+          <span className={styles.leyendaMuestra} aria-hidden="true" />
+          {marca.texto}
+        </div>
+      )}
+      <div className={styles.grafico} style={{ height: ALTO }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={datos} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey={claveX}
+              tickLine={false}
+              tickFormatter={formatearEje}
+              interval="preserveStartEnd"
+              minTickGap={16}
             />
-          )}
-          <Tooltip
-            cursor={{ className: styles.cursor }}
-            content={(props) => (
-              <ContenidoTooltip
-                {...props}
-                formatearDetalle={formatearDetalle}
-                formatearValor={formatearValor}
-              />
+            <YAxis allowDecimals={false} axisLine={false} tickLine={false} width={32} />
+            {hayMarca && (
+              // En una serie de tiempo cada mes es un punto: la marca es una línea vertical, no una franja
+              <ReferenceLine x={marca.categoria} className={styles.marca} />
             )}
-          />
-          <Area
-            type="monotone"
-            dataKey={claveValor}
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4, className: styles.punto }}
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+            <Tooltip
+              cursor={{ className: styles.cursor }}
+              content={(props) => (
+                <ContenidoTooltip
+                  {...props}
+                  formatearDetalle={formatearDetalle}
+                  formatearValor={formatearValor}
+                />
+              )}
+            />
+            <Area
+              type="monotone"
+              dataKey={claveValor}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, className: styles.punto }}
+              isAnimationActive={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
