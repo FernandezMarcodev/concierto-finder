@@ -117,12 +117,12 @@ lugar en el mapa (métrica de calidad, RN-15). Los datos que el sistema muestra 
 | RQ-02 | Filtrar por distancia a la ubicación del usuario. | HA-02 | Sí (RF-11 a RF-13) | Alta |
 | RQ-03 | Buscar y filtrar, no solo listar (por artista y por zona). | HA-04 | Sí (RF-09, RF-12) | Alta |
 | RQ-04 | Funcionar bien en el teléfono. | HA-03 | Sí (RNF-11) | Alta |
-| RQ-05 | **Detectar conciertos suspendidos o reprogramados** y avisarlo en la cartelera. | HA-05 | **No (nuevo)** | Alta |
+| RQ-05 | **Detectar conciertos suspendidos o reprogramados** y avisarlo en la cartelera. | HA-05 | **No (nuevo): RF-37, propuesto** | Alta |
 | RQ-06 | Mostrar el tiempo de viaje además de la distancia. | — (depende de H6) | No | A definir después de las entrevistas |
 
 RQ-05 ya tiene una propuesta de solución: guardar la URL del evento en la fuente y un estado del
-concierto (ver REQUISITOS §7). Se sumaría a [REQUISITOS.md](REQUISITOS.md) con su número cuando
-se planifique.
+concierto (ver REQUISITOS §7). Ya figura en [REQUISITOS.md](REQUISITOS.md) como **RF-37**, en estado
+propuesto.
 
 ## 6. Conclusiones
 

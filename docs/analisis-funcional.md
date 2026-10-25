@@ -9,6 +9,11 @@ Entregables de análisis de sistemas de Concierto Finder. Complementan la especi
 | Proceso de ingesta (BPMN) | [bpmn-ingesta.png](bpmn-ingesta.png) · editable: [bpmn-ingesta.drawio](bpmn-ingesta.drawio) | Terminado (proceso actual) |
 | Modelo de datos (DER) | [der.png](der.png) · editable: [der.drawio](der.drawio) | Terminado |
 | Casos de prueba de aceptación | [casos-de-prueba.md](casos-de-prueba.md) | 10 casos ejecutados el 25/10/2026: 10 pasaron |
+| Especificación de requisitos (ISO/IEC/IEEE 29148) | [REQUISITOS.md](REQUISITOS.md) | Versión 2.0 |
+| Matriz de trazabilidad | [trazabilidad.md](trazabilidad.md) | Terminada |
+| Glosario y LEL | [glosario-lel.md](glosario-lel.md) | Terminado |
+| Estado del arte | [estado-del-arte.md](estado-del-arte.md) | Terminado |
+| Contrato frontend–backend | [contrato-api.md](contrato-api.md) · [openapi.json](openapi.json) | Verificado en CI |
 
 Los `.drawio` se abren y editan en [app.diagrams.net](https://app.diagrams.net) o en draw.io desktop.
 

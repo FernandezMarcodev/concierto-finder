@@ -2,6 +2,9 @@
 
 API REST en JSON. Base en producción: `https://concierto-finder.onrender.com`. En local: `http://localhost:8000`.
 
+La especificación formal está en [`openapi.json`](openapi.json) (OpenAPI 3.1), y las reglas del contrato con el frontend en
+[contrato-api.md](contrato-api.md). Este documento es la referencia con ejemplos.
+
 - CORS habilitado para cualquier origen.
 - Sin autenticación, salvo la ingesta (token).
 - Coordenadas siempre como `[lng, lat]` (WGS84).

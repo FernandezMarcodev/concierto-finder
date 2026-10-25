@@ -1,0 +1,1907 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Concierto Finder API",
+    "version": "2.0.0",
+    "description": "Contrato entre el frontend (web/) y el backend (app/). Ver docs/contrato-api.md. Coordenadas siempre en orden [lng, lat]. Fechas ISO en hora de Argentina."
+  },
+  "servers": [
+    {
+      "url": "https://concierto-finder.onrender.com",
+      "description": "Producción"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local (docker compose)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Conciertos",
+      "description": "Cartelera (RF-01 a RF-16, RF-27)"
+    },
+    {
+      "name": "Métricas",
+      "description": "Métricas del historial (RF-28 a RF-36)"
+    },
+    {
+      "name": "Ingesta",
+      "description": "Carga desde la fuente (RF-19 a RF-26)"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Conciertos"
+        ],
+        "summary": "Verificación de vida (healthcheck y keep alive)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estado"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": false
+      }
+    },
+    "/conciertos": {
+      "get": {
+        "tags": [
+          "Conciertos"
+        ],
+        "summary": "Conciertos vigentes, ordenados por fecha y hora",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaConciertos"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/conciertos_cerca": {
+      "get": {
+        "tags": [
+          "Conciertos"
+        ],
+        "summary": "Conciertos vigentes a km o menos de un punto (búsqueda en el servidor)",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "description": "Latitud",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "description": "Longitud",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "km",
+            "in": "query",
+            "required": true,
+            "description": "Radio en km",
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaConciertos"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": false
+      }
+    },
+    "/ubicaciones": {
+      "get": {
+        "tags": [
+          "Conciertos"
+        ],
+        "summary": "Lugares registrados, ordenados por nombre",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaUbicaciones"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": false
+      }
+    },
+    "/ingestar_agendade": {
+      "get": {
+        "tags": [
+          "Ingesta"
+        ],
+        "summary": "Ejecuta la ingesta desde agendade.com.ar (tarda varios minutos)",
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "tokenEnUrl": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Eventos leídos (no solo los guardados)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventoLeido"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente o incorrecto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya hay una ingesta en curso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Falta configurar SCRAPER_TOKEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": false
+      },
+      "post": {
+        "tags": [
+          "Ingesta"
+        ],
+        "summary": "Ejecuta la ingesta desde agendade.com.ar (tarda varios minutos)",
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "tokenEnUrl": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Eventos leídos (no solo los guardados)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventoLeido"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente o incorrecto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya hay una ingesta en curso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Falta configurar SCRAPER_TOKEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": false
+      }
+    },
+    "/api/metricas/resumen": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Indicadores generales",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resumen"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/conciertos_por_mes": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Conciertos por mes, con los meses vacíos",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConciertosPorMes"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/lugares": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Ranking de lugares",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Cantidad de lugares",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankingLugares"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/artistas": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Ranking de artistas (variantes agrupadas, RN-11)",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Cantidad de artistas",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankingArtistas"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/densidad": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Puntos para el mapa de calor",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "celda",
+            "in": "query",
+            "required": false,
+            "description": "Tamaño de la grilla en grados",
+            "schema": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 0.1,
+              "default": 0.005
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Densidad"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/distancias": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Conciertos por rango de distancia a un punto",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "description": "Latitud del punto (por defecto, el Obelisco; va junto con lng)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "description": "Longitud del punto",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "rangos",
+            "in": "query",
+            "required": false,
+            "description": "Límites en km, crecientes y desde 0 (hasta 10)",
+            "schema": {
+              "type": "string",
+              "default": "0,5,10,20,40"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Distancias"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": false
+      }
+    },
+    "/api/metricas/dia_horario": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Grilla de 7 días por 5 franjas horarias (RN-13)",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiaHorario"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/proximos_dias": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Conciertos de cada uno de los próximos días",
+        "parameters": [
+          {
+            "name": "dias",
+            "in": "query",
+            "required": false,
+            "description": "Días desde hoy",
+            "schema": {
+              "type": "integer",
+              "minimum": 7,
+              "maximum": 60,
+              "default": 14
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProximosDias"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/calidad": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Conciertos con datos incompletos (RN-15)",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Calidad"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/ingesta": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Conciertos nuevos por día de ingesta",
+        "parameters": [
+          {
+            "name": "dias",
+            "in": "query",
+            "required": false,
+            "description": "Días hacia atrás desde hoy",
+            "schema": {
+              "type": "integer",
+              "minimum": 7,
+              "maximum": 90,
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ingesta"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    },
+    "/api/metricas/anticipacion": {
+      "get": {
+        "tags": [
+          "Métricas"
+        ],
+        "summary": "Días de anticipación de los anuncios (RN-14)",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Inicio del período (inclusivo).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Fin del período (inclusivo). El rango no puede superar 10 años.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Anticipacion"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pool de conexiones a la base agotado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-consumida-por-el-frontend": true
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Estado": {
+        "type": "object",
+        "required": [
+          "estado"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "estado": {
+            "type": "string",
+            "const": "ok"
+          }
+        }
+      },
+      "Ubicacion": {
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "capacidad_total",
+          "coordenadas",
+          "url_maps"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "capacidad_total": {
+            "type": "integer",
+            "description": "Hoy siempre 0: la fuente no lo informa."
+          },
+          "coordenadas": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "[lng, lat] (WGS84)"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url_maps": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Concierto": {
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "artista",
+          "url_evento",
+          "ubicacion",
+          "fecha",
+          "hora",
+          "ubicacion_detalle"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "artista": {
+            "type": "string"
+          },
+          "url_evento": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "URL de compra de entradas."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ubicacion": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "description": "id de la ubicación."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fecha": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hora": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{2}:\\d{2}:\\d{2}$",
+                "description": "HH:MM:SS"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ubicacion_detalle": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Ubicacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ListaConciertos": {
+        "type": "object",
+        "required": [
+          "conciertos"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "conciertos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Concierto"
+            }
+          }
+        }
+      },
+      "ListaUbicaciones": {
+        "type": "object",
+        "required": [
+          "ubicaciones"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ubicaciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ubicacion"
+            }
+          }
+        }
+      },
+      "EventoLeido": {
+        "type": "object",
+        "required": [
+          "nombre_evento",
+          "artista",
+          "url_evento",
+          "ubicacion",
+          "fecha",
+          "hora"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "nombre_evento": {
+            "type": "string"
+          },
+          "artista": {
+            "type": "string"
+          },
+          "url_evento": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ubicacion": {
+            "type": "string"
+          },
+          "fecha": {
+            "type": "string",
+            "description": "Formato de la fuente: DD/MM/AA (puede venir vacío)."
+          },
+          "hora": {
+            "type": "string",
+            "description": "Formato de la fuente: HH:MM (puede venir vacío)."
+          }
+        },
+        "description": "Evento tal como se leyó de la fuente, guardado o no."
+      },
+      "Filtro": {
+        "type": "object",
+        "required": [
+          "desde",
+          "hasta"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "desde": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hasta": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "description": "Filtro de fechas aplicado (RN-08)."
+      },
+      "Resumen": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "total",
+          "vigentes",
+          "pasados",
+          "sin_fecha",
+          "lugares",
+          "artistas",
+          "primera_fecha",
+          "ultima_fecha",
+          "concentracion_top5"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "vigentes": {
+            "type": "integer"
+          },
+          "pasados": {
+            "type": "integer"
+          },
+          "sin_fecha": {
+            "type": "integer"
+          },
+          "lugares": {
+            "type": "integer"
+          },
+          "artistas": {
+            "type": "integer"
+          },
+          "primera_fecha": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ultima_fecha": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "concentracion_top5": {
+            "oneOf": [
+              {
+                "type": "number",
+                "description": "% de conciertos con lugar en los 5 lugares más activos."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ConciertosPorMes": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "meses"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "meses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "mes",
+                "cantidad"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "mes": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}$"
+                },
+                "cantidad": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RankingLugares": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "lugares"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "lugares": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "nombre",
+                "cantidad"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "nombre": {
+                  "type": "string"
+                },
+                "cantidad": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RankingArtistas": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "artistas"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "artistas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "artista",
+                "cantidad",
+                "lugares"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "artista": {
+                  "type": "string"
+                },
+                "cantidad": {
+                  "type": "integer"
+                },
+                "lugares": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Densidad": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "celda",
+          "puntos"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "celda": {
+            "type": "number"
+          },
+          "puntos": {
+            "type": "array",
+            "description": "[lng, lat, cantidad]",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          }
+        }
+      },
+      "Distancias": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "punto",
+          "rangos"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "punto": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[lng, lat] (WGS84)"
+          },
+          "rangos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "desde_km",
+                "hasta_km",
+                "cantidad"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "desde_km": {
+                  "type": "number"
+                },
+                "hasta_km": {
+                  "oneOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "cantidad": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DiaHorario": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "celdas"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "celdas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "dia",
+                "franja",
+                "nombre_franja",
+                "cantidad"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "dia": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7,
+                  "description": "ISO: 1 = lunes ... 7 = domingo"
+                },
+                "franja": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "nombre_franja": {
+                  "type": "string"
+                },
+                "cantidad": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProximosDias": {
+        "type": "object",
+        "required": [
+          "dias"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "dias": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "fecha",
+                "cantidad"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "fecha": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+                },
+                "cantidad": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Calidad": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "total",
+          "sin_fecha",
+          "sin_hora",
+          "sin_entradas",
+          "sin_ubicacion"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "sin_fecha": {
+            "type": "integer"
+          },
+          "sin_hora": {
+            "type": "integer"
+          },
+          "sin_entradas": {
+            "type": "integer"
+          },
+          "sin_ubicacion": {
+            "type": "integer"
+          }
+        }
+      },
+      "Ingesta": {
+        "type": "object",
+        "required": [
+          "desde_que_se_mide",
+          "dias"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "desde_que_se_mide": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dias": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "fecha",
+                "nuevos"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "fecha": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "AAAA-MM-DD. Interpretarla como fecha local (no con new Date(fecha), que usa UTC)."
+                },
+                "nuevos": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Anticipacion": {
+        "type": "object",
+        "required": [
+          "filtro",
+          "mediana_dias",
+          "rangos"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "filtro": {
+            "$ref": "#/components/schemas/Filtro"
+          },
+          "mediana_dias": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rangos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "desde_dias",
+                "hasta_dias",
+                "cantidad"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "desde_dias": {
+                  "type": "integer"
+                },
+                "hasta_dias": {
+                  "oneOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "cantidad": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "SCRAPER_TOKEN"
+      },
+      "tokenEnUrl": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "token",
+        "description": "SCRAPER_TOKEN, para crons que solo configuran una URL"
+      }
+    }
+  }
+}
