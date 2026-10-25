@@ -16,8 +16,8 @@ AMBA_MAX_LNG = -57.7
 
 URL_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 
-# La política de uso de Nominatim pide un User-Agent que identifique a la aplicación.
-_sesion = nueva_sesion("ConciertoFinder/1.0 (+https://github.com/FernandezMarcodev/concierto-finder)")
+# La política de uso de Nominatim pide un User-Agent que identifique a la aplicación (el de nueva_sesion).
+_sesion = nueva_sesion()
 
 
 def dentro_de_amba(lat, lon):

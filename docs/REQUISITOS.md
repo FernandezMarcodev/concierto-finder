@@ -116,7 +116,7 @@ Los números RF-17 y RF-18 no se usan (quedaron libres en una versión anterior 
 | RNF-04 | Capacidad | Pool de conexiones a la base de 3 + 2 de desborde y 30 s de espera. Si se agota, la API responde 503. |
 | RNF-05 | Disponibilidad | En Render (plan gratuito), la API se mantiene despierta de 9:00 a 2:00 (hora argentina, configurable): se pingea a sí misma cada 12 min y el workflow de GitHub Actions la despierta a las 9:10. Consume ≈ 535 h de las 750 h mensuales del plan. Fuera de la franja, el primer pedido espera 30 a 60 s. |
 | RNF-06 | Robustez | Todo pedido HTTP saliente tiene timeout (15 s scraping/geocodificación, 30 s keep alive). Un evento con error no corta la ingesta. |
-| RNF-07 | Cortesía con terceros | 1 s de pausa entre eventos scrapeados. User-Agent identificable para Nominatim. |
+| RNF-07 | Cortesía con terceros | 1 s de pausa entre eventos scrapeados. Todos los pedidos salientes (agendade y Nominatim) usan un User-Agent que identifica al proyecto, con link al repositorio. |
 | RNF-08 | Seguridad | Las credenciales solo se leen del entorno (`DATABASE_URL`, `SCRAPER_TOKEN`), nunca del código. El token se compara en tiempo constante. |
 | RNF-09 | Seguridad | La API pública es de solo lectura; la única escritura (ingesta) requiere token. CORS abierto a cualquier origen. Las tablas de la base tienen seguridad a nivel de fila (RLS) y los roles de la API automática de Supabase (`anon`, `authenticated`) no tienen permisos: los datos solo se leen y escriben a través de la API de Flask. |
 | RNF-10 | Mantenibilidad | El esquema de la base se versiona con migraciones de Alembic y se aplica al arrancar el contenedor. |
@@ -142,6 +142,7 @@ Los números RF-17 y RF-18 no se usan (quedaron libres en una versión anterior 
 
 | Limitación | Impacto |
 |---|---|
+| Desde el 22/10/2026, agendade.com.ar responde **403** a los pedidos que salen de Render (protección contra bots de Cloudflare); desde otras conexiones responde normalmente. El `robots.txt` del sitio permite el rastreo general. | La ingesta automática no trae conciertos nuevos hasta que la fuente habilite el acceso: se le pide por su formulario de contacto. No se evade el bloqueo (cambiar de IP o usar proxies). |
 | La búsqueda de lugar por nombre parcial (`ILIKE %nombre%`) puede asociar un evento al lugar equivocado si un nombre contiene a otro. | Marcador en el lugar incorrecto. |
 | `ubicaciones.nombre` admite 50 caracteres; un lugar con nombre más largo hace fallar el alta y se pierde ese evento. | Pérdida de algunos eventos. |
 | Muchos bares y salas chicas de AMBA (por ejemplo Lucille, La Tangente, Lalalá o CC Richards) no están cargados en OpenStreetMap con ningún nombre, así que Nominatim no los encuentra y sus conciertos se descartan. La tabla de lugares conocidos solo cubre los lugares agregados a mano. | Faltan conciertos de lugares chicos. Se pueden recuperar de a uno: el log dice qué lugar no se encontró, y se agrega a `lugares_conocidos.py` con la coordenada de su dirección (ver `OPERACION.md` §8). |
