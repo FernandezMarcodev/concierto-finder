@@ -43,7 +43,11 @@ El detalle de cada decisión, con sus alternativas, está en [ARQUITECTURA.md](d
 
 | Documento | Contenido |
 |---|---|
-| [REQUISITOS.md](docs/REQUISITOS.md) | Alcance, actores, requisitos funcionales y no funcionales, reglas de negocio y limitaciones. |
+| [REQUISITOS.md](docs/REQUISITOS.md) | Especificación de requisitos según ISO/IEC/IEEE 29148: funcionales, reglas de negocio y no funcionales clasificados según Sommerville. |
+| [trazabilidad.md](docs/trazabilidad.md) | Matriz de trazabilidad: fuente, código y pruebas de cada requisito, y cobertura. |
+| [glosario-lel.md](docs/glosario-lel.md) | Léxico Extendido del Lenguaje (sujetos, objetos, verbos y estados del dominio) y glosario técnico. |
+| [contrato-api.md](docs/contrato-api.md) | Contrato frontend–backend ([`openapi.json`](docs/openapi.json), OpenAPI 3.1), verificado con tests en CI. |
+| [estado-del-arte.md](docs/estado-del-arte.md) | Comparación con soluciones existentes (agendade, medios, ticketeras, Bandsintown, Songkick). |
 | [ARQUITECTURA.md](docs/ARQUITECTURA.md) | Vistas C4, capas, modelo de datos, flujos, decisiones y deuda técnica. |
 | [API.md](docs/API.md) | Endpoints, formatos y códigos de error. |
 | [OPERACION.md](docs/OPERACION.md) | Variables de entorno, entorno local, migraciones, despliegue, ingesta, tests y CI. |
