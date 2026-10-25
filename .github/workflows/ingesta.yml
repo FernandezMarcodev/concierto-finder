@@ -82,5 +82,12 @@ jobs:
             exit 1
           fi
 
-          echo "Ingesta terminada. Eventos leídos: $(jq length respuesta.json)."
+          leidos=$(jq length respuesta.json)
+          # La agenda siempre tiene eventos: 0 leídos significa que el scraping falló aunque la API
+          # haya respondido 200 (por ejemplo, la fuente bloqueó el pedido). Antes quedaba en verde.
+          if [ "$leidos" -eq 0 ]; then
+            echo "::error::La ingesta no leyó ningún evento. Revisá los logs de Render (\"no tiene la lista de eventos\" o \"Error al obtener la página\") y docs/OPERACION.md §8."
+            exit 1
+          fi
+          echo "Ingesta terminada. Eventos leídos: $leidos."
           echo "Los conciertos nuevos guardados figuran en los logs de Render (\"nuevos guardados\")."

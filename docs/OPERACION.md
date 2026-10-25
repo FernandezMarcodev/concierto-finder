@@ -157,7 +157,7 @@ de GitHub Actions.
 | Cuándo | Cada 12 h: **9:10 y 21:10** (hora argentina). En el cron de GitHub figura en UTC: `10 0,12 * * *`. Las dos horas caen dentro de la franja del keep alive. |
 | Paso 1 | `GET /` hasta 10 veces, cada 15 s, hasta que Render despierte la API. |
 | Paso 2 | `POST /ingestar_agendade` con el header `Authorization: Bearer <SCRAPER_TOKEN>`. Espera hasta 25 min. |
-| Resultado | Verde: terminó y muestra cuántos eventos leyó. Amarillo (warning): pasaron 25 min sin respuesta, pero el servidor sigue trabajando aunque se corte la conexión. Rojo: no despertó, falta el secret, o la API respondió un error (por ejemplo, 401 por un token distinto al de Render). |
+| Resultado | Verde: terminó y muestra cuántos eventos leyó. Amarillo (warning): pasaron 25 min sin respuesta, pero el servidor sigue trabajando aunque se corte la conexión. Rojo: no despertó, falta el secret, la API respondió un error (por ejemplo, 401 por un token distinto al de Render) o la ingesta leyó 0 eventos (el scraping falló aunque la API haya respondido 200). |
 | A mano | Pestaña **Actions → Ingesta de conciertos → Run workflow**. |
 
 **Después de un deploy con la base vacía no hace falta esperar al workflow:** la API ejecuta sola la
@@ -206,6 +206,7 @@ despierta la instancia, la limpieza corre al menos una vez por día.
 | La ingesta responde `401` | Token incorrecto o mal enviado | Revisar el header `Authorization: Bearer ...`. |
 | La API responde `503 Servidor ocupado` | Pool de conexiones agotado | Revisar consultas lentas o la carga; el pool es de 3+2 conexiones. |
 | Un concierto de AMBA no aparece y el log dice `No se agrega el concierto '...': '...' no se encontró la ubicación` | Nominatim no conoce el lugar con ese nombre | Buscar el lugar en openstreetmap.org (por nombre oficial o dirección) y sumarlo a `app/services/lugares_conocidos.py` con la clave del log en minúsculas y sin tildes. |
+| El workflow de ingesta falla con "La ingesta no leyó ningún evento" | La fuente cambió el HTML o bloquea el pedido desde Render (agendade usa Cloudflare) | En los logs de Render buscar `no tiene la lista de eventos` (el título `Just a moment...` indica un bloqueo de Cloudflare) o `Error al obtener la página` (con el código HTTP). Comparar corriendo el scraper desde una conexión local. |
 | La ingesta lee eventos pero no guarda ninguno | Cambió el HTML de agendade o Nominatim no responde | Revisar los logs (`app.services.scraper_service`) con `LOG_LEVEL=DEBUG`. |
 | El frontend local muestra datos de producción | Falta `VITE_API_URL` | Crear `web/.env.local`. |
 | `flask db upgrade` falla con `permission denied to create extension` | El usuario no puede crear PostGIS | Crear la extensión como superusuario una vez. |
