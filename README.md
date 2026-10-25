@@ -48,6 +48,7 @@ El detalle de cada decisión, con sus alternativas, está en [ARQUITECTURA.md](d
 | [API.md](docs/API.md) | Endpoints, formatos y códigos de error. |
 | [OPERACION.md](docs/OPERACION.md) | Variables de entorno, entorno local, migraciones, despliegue, ingesta, tests y CI. |
 | [PLAN.md](docs/PLAN.md) | Cómo trabajamos con ramas y PRs, y la hoja de ruta de features, una rama por feature. |
+| [Análisis funcional](docs/analisis-funcional.md) | Relevamiento documental, proceso de ingesta en BPMN, DER y casos de prueba de aceptación ejecutados sobre la app publicada. |
 
 ## Estructura
 
@@ -66,7 +67,7 @@ ConciertosFinder/
 │   └── services/               # Scraper, geocodificación, tareas, métricas, fechas, datos ficticios
 ├── tests/                      # pytest contra PostGIS: repositorios, rutas, métricas, migraciones
 ├── migrations/                 # Migraciones de Alembic
-├── docs/                       # Requisitos, arquitectura, API, operación y plan
+├── docs/                       # Requisitos, arquitectura, API, operación, plan y análisis funcional
 ├── web/                        # Frontend (React + Vite + Leaflet)
 │   └── src/
 │       ├── paginas/            # Inicio (conciertos) y Metricas
