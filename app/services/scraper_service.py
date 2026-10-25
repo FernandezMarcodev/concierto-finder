@@ -226,11 +226,25 @@ def _recorrer_agenda():
         url_pagina = f"{URL_AGENDA}{pagina}"
         logger.info("Procesando página %s", url_pagina)
         try:
-            urls = _urls_de_eventos(_obtener_html(sesion, url_pagina))
+            soup = _obtener_html(sesion, url_pagina)
         except Exception:
             logger.exception("Error al obtener la página %s", url_pagina)
             break
+        urls = _urls_de_eventos(soup)
         if urls is None:
+            if pagina == PAGINAS[0]:
+                # La primera página siempre tiene eventos: si no está la lista, algo anda mal. Antes
+                # se cortaba en silencio. El título ayuda a distinguir un cambio de HTML de un bloqueo
+                # (las páginas de verificación de Cloudflare se titulan "Just a moment...").
+                titulo = soup.title.get_text(strip=True) if soup.title else None
+                logger.error(
+                    "La página %s no tiene la lista de eventos (título: %r): cambió el HTML de la "
+                    "fuente o está bloqueando el pedido",
+                    url_pagina,
+                    titulo,
+                )
+            else:
+                logger.info("La página %s no tiene eventos: fin de la agenda", url_pagina)
             break
 
         for url_evento in urls:
